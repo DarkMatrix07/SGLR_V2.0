@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { supabase } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler } from 'react-native';
@@ -48,25 +50,39 @@ export default function InspectionForm() {
     const [items, setItems] = useState<ChecklistItem[]>([]);
     const [responses, setResponses] = useState<Responses>({});
     const [loading, setLoading] = useState(true);
+    const [showDraftModal, setShowDraftModal] = useState(false);
+    const [draftTimestamp, setDraftTimestamp] = useState<string | null>(null);
 
-    useEffect(() => { fetchData(); }, []);
     useEffect(() => {
-        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            router.replace('/(divisional)');
-            return true;
-        });
-        return () => backHandler.remove();
+        async function init() {
+            const [resortRes, itemsRes] = await Promise.all([
+                supabase.from('resorts').select('id, name, serial_no, area').eq('id', id).single(),
+                supabase.from('checklist_items').select('*').order('sort_order'),
+            ]);
+            if (resortRes.data) setResort(resortRes.data);
+            if (itemsRes.data) setItems(itemsRes.data);
+
+            // Check for existing draft
+            const draft = await AsyncStorage.getItem(`draft_${id}`);
+            if (draft) {
+                const parsed = JSON.parse(draft);
+                setDraftTimestamp(parsed.savedAt || null);
+                setShowDraftModal(true);
+            }
+            setLoading(false);
+        }
+        init();
     }, []);
 
-    async function fetchData() {
-        const [resortRes, itemsRes] = await Promise.all([
-            supabase.from('resorts').select('id, name, serial_no, area').eq('id', id).single(),
-            supabase.from('checklist_items').select('*').order('sort_order'),
-        ]);
-        if (resortRes.data) setResort(resortRes.data);
-        if (itemsRes.data) setItems(itemsRes.data);
-        setLoading(false);
-    }
+    useEffect(() => {
+        if (Object.keys(responses).length > 0) {
+            const draftData = JSON.stringify({
+                responses,
+                savedAt: new Date().toISOString(),
+            });
+            AsyncStorage.setItem(`draft_${id}`, draftData);
+        }
+    }, [responses]);
 
     function getTotalScore() {
         return Object.values(responses).reduce((sum: number, r: any) => sum + (r.marks || 0), 0);
@@ -82,6 +98,21 @@ export default function InspectionForm() {
 
     function setResponse(itemId: string, data: any) {
         setResponses(prev => ({ ...prev, [itemId]: data }));
+    }
+
+    async function resumeDraft() {
+        const draft = await AsyncStorage.getItem(`draft_${id}`);
+        if (draft) {
+            const parsed = JSON.parse(draft);
+            setResponses(parsed.responses || {});
+        }
+        setShowDraftModal(false);
+    }
+
+    function startFresh() {
+        setResponses({});
+        AsyncStorage.removeItem(`draft_${id}`);
+        setShowDraftModal(false);
     }
 
     function renderYesNo(item: ChecklistItem) {
@@ -233,6 +264,71 @@ export default function InspectionForm() {
         router.replace(`/(divisional)/summary/${id}`);
     }
 
+    async function generateBlankPDF() {
+        try {
+            let tableRows = '';
+
+            items.forEach(item => {
+                tableRows += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #b2c9c9; text-align: center; font-size: 13px;">${item.id.toUpperCase()}</td>
+                        <td style="padding: 8px; border: 1px solid #b2c9c9; font-size: 13px;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">${item.label}</div>
+                            ${item.description ? `<div style="font-size: 12px; color: #555;">${item.description}</div>` : ''}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #b2c9c9; text-align: center; font-size: 13px;">${item.max_marks}</td>
+                        <td style="padding: 8px; border: 1px solid #b2c9c9;"></td>
+                    </tr>
+                `;
+            });
+
+            const html = `
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                        <style>
+                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #1A1A2E; }
+                            .header { text-align: center; margin-bottom: 25px; }
+                            .header h1 { color: #0D7377; margin: 0; font-size: 22px; font-weight: normal; letter-spacing: 1px; }
+                            .header p { color: #1A1A2E; margin-top: 8px; font-size: 14px; font-weight: 500; }
+                            .marks-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                            .marks-table th { background-color: #0D7377; color: white; padding: 12px 8px; text-align: left; border: 1px solid #0D7377; font-size: 13px; font-weight: 600; }
+                            .marks-table th.center { text-align: center; }
+                            .marks-table td { padding: 8px; border: 1px solid #b2c9c9; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>SGLR RATING</h1>
+                            <p>${resort?.name || 'Resort'}</p>
+                        </div>
+                        <table class="marks-table">
+                            <thead>
+                                <tr>
+                                    <th class="center" style="width: 40px;">ID</th>
+                                    <th>Description</th>
+                                    <th class="center" style="width: 70px;">Max Marks</th>
+                                    <th class="center" style="width: 100px;">Marks Awarded</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </body>
+                </html>
+            `;
+
+            const { uri } = await Print.printToFileAsync({ html });
+            await Sharing.shareAsync(uri, { dialogTitle: 'Download Blank Checklist', UTI: 'com.adobe.pdf' });
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            Alert.alert('Error', 'Could not generate PDF report');
+        }
+    }
+
     if (loading || !resort) {
         return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
     }
@@ -243,10 +339,36 @@ export default function InspectionForm() {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#EEF4F5' }}>
+            <Modal visible={showDraftModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <Text style={styles.modalTitle}>Draft Found</Text>
+                        <Text style={styles.modalText}>
+                            You have an unfinished inspection for this resort.
+                            {draftTimestamp && `\n\nLast saved: ${new Date(draftTimestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                        </Text>
+                        <TouchableOpacity style={styles.modalBtnPrimary} onPress={resumeDraft}>
+                            <Text style={styles.modalBtnPrimaryText}>Resume Draft</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalBtnSecondary} onPress={startFresh}>
+                            <Text style={styles.modalBtnSecondaryText}>Start Fresh</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                 <View style={styles.resortHeader}>
                     <Text style={styles.resortName}>{resort.serial_no}. {resort.name}</Text>
                     <Text style={styles.resortArea}>{resort.area}</Text>
+                </View>
+
+                <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+                    <TouchableOpacity
+                        style={styles.blankPdfBtn}
+                        onPress={generateBlankPDF}
+                    >
+                        <Text style={styles.blankPdfBtnText}>↓ Download Blank Checklist</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {categories.map(cat => {
@@ -321,4 +443,14 @@ const styles = StyleSheet.create({
     manualRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
     manualInput: { flex: 1, backgroundColor: '#EEF4F5', borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600', textAlign: 'center' },
     manualRange: { fontSize: 14, color: '#8A9BAE', marginLeft: 8 },
+    blankPdfBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#0D9DA8', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, alignSelf: 'flex-start', backgroundColor: '#fff' },
+    blankPdfBtnText: { color: '#0D9DA8', fontSize: 13, fontWeight: '700' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalBox: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 340 },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', marginBottom: 8 },
+    modalText: { fontSize: 14, color: '#8A9BAE', lineHeight: 20, marginBottom: 20 },
+    modalBtnPrimary: { backgroundColor: '#0D9DA8', padding: 14, borderRadius: 20, alignItems: 'center', marginBottom: 10 },
+    modalBtnPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    modalBtnSecondary: { padding: 14, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E63946' },
+    modalBtnSecondaryText: { color: '#E63946', fontSize: 15, fontWeight: '600' },
 });

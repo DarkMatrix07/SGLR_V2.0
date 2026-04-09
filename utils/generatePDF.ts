@@ -15,6 +15,7 @@ type ChecklistItem = {
     category: string;
     subcategory: string;
     label: string;
+    description: string | null;
     input_type: string;
     max_marks: number;
     options: any[] | null;
@@ -99,7 +100,10 @@ export async function generateAndSharePDF(
             tableRows += `
         <tr style="border-bottom:1px solid #E0E8EA;">
           <td style="padding:6px 8px;color:#0D7377;font-weight:600;width:50px;">${item.id.toUpperCase()}</td>
-          <td style="padding:6px 8px;color:#1A1A2E;">${item.label}</td>
+          <td style="padding:6px 8px;color:#1A1A2E;">
+            <div style="font-weight: 600; margin-bottom: 2px;">${item.label}</div>
+            ${item.description ? `<div style="font-size: 11px; color: #666;">${item.description}</div>` : ''}
+          </td>
           <td style="padding:6px 8px;color:${answered ? '#1A1A2E' : '#E63946'};">${getAnswerText(item, r)}</td>
           <td style="padding:6px 8px;text-align:right;font-weight:600;color:${marksColor};">${marks}</td>
         </tr>`;
@@ -150,12 +154,6 @@ export async function generateAndSharePDF(
         ${inspection.district_comments ? `<tr><td class="label">District Comments</td><td>${inspection.district_comments}</td></tr>` : ''}
       </table>
 
-      <div class="score-box">
-        <div class="score">${inspection.total_score} / 200</div>
-        <div class="stars">${stars}</div>
-        <div class="label">${getStarLabel(inspection.stars)}</div>
-      </div>
-
       <table class="checklist">
         <tr>
           <th>ID</th>
@@ -166,21 +164,52 @@ export async function generateAndSharePDF(
         ${tableRows}
       </table>
 
-      <table style="width:100%;margin-top:50px;">
-        <tr>
-          <td style="width:45%;text-align:center;">
-            <div style="border-top:1px solid #1A1A2E;margin-top:60px;padding-top:8px;font-size:12px;">
-              Divisional Committee Officer<br/>Signature & Date
-            </div>
-          </td>
-          <td style="width:10%;"></td>
-          <td style="width:45%;text-align:center;">
-            <div style="border-top:1px solid #1A1A2E;margin-top:60px;padding-top:8px;font-size:12px;">
-              District Committee Officer<br/>Signature & Date
-            </div>
-          </td>
-        </tr>
-      </table>
+      <div class="score-box" style="margin-top: 40px; border: 1px solid #E0E8EA; border-radius: 8px; padding: 24px; text-align: center;">
+        <div class="stars" style="color: #F4A423; font-size: 36px; letter-spacing: 4px; margin-bottom: 12px;">
+           ${stars}
+        </div>
+        <div class="label" style="font-size: 14px; color: #1A1A2E;">
+           ${inspection.stars} out of 5 stars
+        </div>
+      </div>
+
+      <div class="committee-section" style="margin-top: 50px;">
+        <div class="committee-title" style="color: #0D7377; font-size: 14px; margin-bottom: 6px;">Divisional Committee Members</div>
+        <div style="border-bottom: 2px solid #0D7377; margin-bottom: 60px;"></div>
+        
+        <table style="width: 100%; text-align: center; font-size: 11px;">
+          <tr>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 1</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 2</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 3</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 4</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 5</div></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="committee-section" style="margin-top: 50px;">
+        <div class="committee-title" style="color: #0D7377; font-size: 14px; margin-bottom: 6px;">District Committee Members</div>
+        <div style="border-bottom: 2px solid #0D7377; margin-bottom: 60px;"></div>
+        
+        <table style="width: 100%; text-align: center; font-size: 11px;">
+          <tr>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 1</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 2</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 3</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 4</div></td>
+            <td style="width: 2.5%;"></td>
+            <td style="width: 18%;"><div style="border-top: 1px solid #1A1A2E; padding-top: 6px;">Member 5</div></td>
+          </tr>
+        </table>
+      </div>
 
       <div class="footer">
         Generated by SGLR Rating App • ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}

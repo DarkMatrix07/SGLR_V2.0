@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { supabase } from '../../../lib/supabase';
 
 type ChecklistItem = {
@@ -128,6 +130,94 @@ export default function InspectionDetail() {
         );
     }
 
+    async function generateCompletedPDF() {
+        try {
+            const responses = inspection?.responses || {};
+            let tableRows = '';
+
+            items.forEach(item => {
+                const r = responses[item.id];
+                // Check if answered. If not answered, marks are 0
+                const marksAwarded = r?.marks ?? 0;
+                
+                tableRows += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #E0E8EA; text-align: center;">${item.id.toUpperCase()}</td>
+                        <td style="padding: 8px; border: 1px solid #E0E8EA;">${item.label}</td>
+                        <td style="padding: 8px; border: 1px solid #E0E8EA; text-align: center;">${item.max_marks}</td>
+                        <td style="padding: 8px; border: 1px solid #E0E8EA; text-align: center; font-weight: bold; color: #0D7377;">${marksAwarded}</td>
+                    </tr>
+                `;
+            });
+
+            const html = `
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                        <style>
+                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
+                            .header { text-align: center; margin-bottom: 30px; }
+                            .header h1 { color: #0D9DA8; margin: 0; font-size: 28px; letter-spacing: 2px; }
+                            .header p { color: #8A9BAE; margin-top: 5px; font-size: 14px; }
+                            .info-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
+                            .info-table td { padding: 8px; border-bottom: 1px solid #eee; font-size: 14px; }
+                            .info-table td.label { font-weight: bold; width: 140px; color: #555; background-color: #f9f9f9; }
+                            .marks-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                            .marks-table th { background-color: #0D9DA8; color: white; padding: 12px 8px; text-align: left; border: 1px solid #0D9DA8; font-size: 14px; }
+                            .marks-table th.center { text-align: center; }
+                            .marks-table td { padding: 8px; border: 1px solid #E0E8EA; font-size: 13px; }
+                            .total-row td { font-weight: bold; font-size: 16px; background-color: #EEF4F5; }
+                            .stars { color: #F4A423; font-size: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>SGLR RATING</h1>
+                            <p>Inspection Report - Swachha Green Leaf Rating</p>
+                        </div>
+
+                        <table class="info-table">
+                            <tr><td class="label">Resort Name:</td><td>${resort?.name || 'N/A'}</td></tr>
+                            <tr><td class="label">Area:</td><td>${resort?.area || 'N/A'}</td></tr>
+                            <tr><td class="label">Manager/Owner:</td><td>${resort?.owner_name || 'N/A'}</td></tr>
+                            <tr><td class="label">Phone:</td><td>${resort?.owner_phone || 'N/A'}</td></tr>
+                        </table>
+
+                        <table class="marks-table">
+                            <thead>
+                                <tr>
+                                    <th class="center" style="width: 50px;">ID</th>
+                                    <th>Description</th>
+                                    <th class="center" style="width: 80px;">Max Marks</th>
+                                    <th class="center" style="width: 100px;">Marks Awarded</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                                <tr class="total-row">
+                                    <td colspan="2" style="text-align: right; padding-right: 15px;">TOTAL SCORE & RATING:</td>
+                                    <td class="center">200</td>
+                                    <td class="center" style="color: #0D7377;">
+                                        ${inspection?.total_score || 0}<br/>
+                                        <span class="stars">${'★'.repeat(inspection?.stars || 0)}${'☆'.repeat(5 - (inspection?.stars || 0))}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </body>
+                </html>
+            `;
+
+            const { uri } = await Print.printToFileAsync({ html });
+            await Sharing.shareAsync(uri, { dialogTitle: 'Download Inspection Report', UTI: 'com.adobe.pdf' });
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            Alert.alert('Error', 'Could not generate PDF report');
+        }
+    }
+
     if (loading || !inspection || !resort) {
         return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
     }
@@ -202,6 +292,13 @@ export default function InspectionDetail() {
                         />
                     </View>
                 )}
+
+                <TouchableOpacity
+                    style={styles.downloadBtn}
+                    onPress={generateCompletedPDF}
+                >
+                    <Text style={styles.downloadBtnText}>↓ Download Inspection Report</Text>
+                </TouchableOpacity>
             </ScrollView>
 
             {isPending && (
@@ -267,4 +364,6 @@ const styles = StyleSheet.create({
     approveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     unfreezeBtn: { borderWidth: 1.5, borderColor: '#F4A423' },
     unfreezeBtnText: { color: '#F4A423', fontSize: 15, fontWeight: '600' },
+    downloadBtn: { margin: 12, marginTop: 16, backgroundColor: '#0D9DA8', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20, elevation: 6, alignItems: 'center' },
+    downloadBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
