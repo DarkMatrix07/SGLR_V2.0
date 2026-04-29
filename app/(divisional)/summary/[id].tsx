@@ -56,7 +56,13 @@ export default function Summary() {
         ]);
         if (resortRes.data) setResort(resortRes.data);
         if (itemsRes.data) setItems(itemsRes.data);
-        if (draft) setResponses(JSON.parse(draft));
+        if (draft) {
+            try {
+                setResponses(JSON.parse(draft));
+            } catch {
+                await AsyncStorage.removeItem(`draft_${id}`);
+            }
+        }
         setLoading(false);
     }
 
@@ -140,15 +146,8 @@ export default function Summary() {
 
                         if (error) {
                             console.error('Supabase insert error:', error.message);
-                            // Temporarily bypass error to show the flow
-                            Alert.alert('Database Error', 'Inspection could not be saved to the database. Proceeding to confirmation anyway for demonstration.', [
-                                {
-                                    text: 'OK', onPress: () => {
-                                        setSubmitting(false);
-                                        router.replace(`/(divisional)/confirm/${id}`);
-                                    }
-                                }
-                            ]);
+                            Alert.alert('Submission Failed', 'Please check your internet connection and try again.');
+                            setSubmitting(false);
                         } else {
                             await AsyncStorage.removeItem(`draft_${id}`);
                             router.replace(`/(divisional)/confirm/${id}`);
@@ -159,8 +158,11 @@ export default function Summary() {
         );
     }
 
-    if (loading || !resort) {
+    if (loading) {
         return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
+    }
+    if (!resort) {
+        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
     }
 
     const total = getTotalScore();

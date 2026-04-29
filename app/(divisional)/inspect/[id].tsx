@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../../../lib/supabase';
+import { generatePreInspectionPDF } from '../../../utils/generatePDF';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler } from 'react-native';
 
@@ -26,6 +27,9 @@ type Resort = {
     name: string;
     serial_no: number;
     area: string;
+    owner_name: string | null;
+    owner_phone: string | null;
+    room_count: number | null;
 };
 
 type Responses = Record<string, any>;
@@ -56,7 +60,7 @@ export default function InspectionForm() {
     useEffect(() => {
         async function init() {
             const [resortRes, itemsRes] = await Promise.all([
-                supabase.from('resorts').select('id, name, serial_no, area').eq('id', id).single(),
+                supabase.from('resorts').select('id, name, serial_no, area, owner_name, owner_phone, room_count').eq('id', id).single(),
                 supabase.from('checklist_items').select('*').order('sort_order'),
             ]);
             if (resortRes.data) setResort(resortRes.data);
@@ -65,9 +69,13 @@ export default function InspectionForm() {
             // Check for existing draft
             const draft = await AsyncStorage.getItem(`draft_${id}`);
             if (draft) {
-                const parsed = JSON.parse(draft);
-                setDraftTimestamp(parsed.savedAt || null);
-                setShowDraftModal(true);
+                try {
+                    const parsed = JSON.parse(draft);
+                    setDraftTimestamp(parsed.savedAt || null);
+                    setShowDraftModal(true);
+                } catch {
+                    await AsyncStorage.removeItem(`draft_${id}`);
+                }
             }
             setLoading(false);
         }
@@ -103,8 +111,12 @@ export default function InspectionForm() {
     async function resumeDraft() {
         const draft = await AsyncStorage.getItem(`draft_${id}`);
         if (draft) {
-            const parsed = JSON.parse(draft);
-            setResponses(parsed.responses || {});
+            try {
+                const parsed = JSON.parse(draft);
+                setResponses(parsed.responses || {});
+            } catch {
+                await AsyncStorage.removeItem(`draft_${id}`);
+            }
         }
         setShowDraftModal(false);
     }
@@ -191,29 +203,66 @@ export default function InspectionForm() {
                     const key = keys[idx];
                     const isSelected = current?.selected === key;
                     return (
-                        <TouchableOpacity
-                            key={idx}
-                            style={[styles.radioRow, isSelected && styles.radioRowActive]}
-                            onPress={() => {
-                                if (opt.hasSubScore) {
-                                    setResponse(item.id, { selected: key, subScore: current?.subScore || 0, marks: current?.subScore || 0 });
-                                } else {
-                                    setResponse(item.id, { selected: key, marks: opt.marks });
-                                    // Clear 3_sub if not septic tank
-                                    if (key !== 'septic_tank') {
-                                        setResponses(prev => { const n = { ...prev }; delete n['3_sub']; return n; });
+                        <View key={idx}>
+                            <TouchableOpacity
+                                style={[styles.radioRow, isSelected && styles.radioRowActive]}
+                                onPress={() => {
+                                    if (key === 'single_pit') {
+                                        setResponse(item.id, { selected: key, marks: -8 });
+                                        setResponses(prev => {
+                                            const n = { ...prev };
+                                            delete n['3_sub'];
+                                            delete n['3_desludge'];
+                                            return { ...n, [item.id]: { selected: key, marks: -8 } };
+                                        });
+                                    } else if (key === 'septic_tank') {
+                                        setResponses(prev => {
+                                            const n = { ...prev };
+                                            return { ...n, [item.id]: { selected: key, subScore: 0, marks: 0 } };
+                                        });
+                                    } else {
+                                        setResponses(prev => {
+                                            const n = { ...prev };
+                                            delete n['3_sub'];
+                                            delete n['3_desludge'];
+                                            return { ...n, [item.id]: { selected: key, subScore: 0, marks: 0 } };
+                                        });
                                     }
-                                }
-                            }}
-                        >
-                            <View style={[styles.radio, isSelected && styles.radioActive]}>
-                                {isSelected && <View style={styles.radioDot} />}
-                            </View>
-                            <Text style={styles.radioLabel}>{opt.label}</Text>
-                            <Text style={[styles.radioMarks, (opt.marks !== null && opt.marks < 0) && { color: '#E63946' }]}>
-                                {opt.hasSubScore ? '0-22' : `${opt.marks > 0 ? '+' : ''}${opt.marks}`}
-                            </Text>
-                        </TouchableOpacity>
+                                }}
+                            >
+                                <View style={[styles.radio, isSelected && styles.radioActive]}>
+                                    {isSelected && <View style={styles.radioDot} />}
+                                </View>
+                                <Text style={styles.radioLabel}>{opt.label}</Text>
+                                <Text style={[styles.radioMarks, key === 'single_pit' && { color: '#E63946' }]}>
+                                    {key === 'single_pit' ? '-8' : `0-${opt.subScoreMax}`}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {isSelected && key !== 'single_pit' && (
+                                <View style={styles.subScoreBox}>
+                                    <Text style={styles.subScoreLabel}>
+                                        {key === 'septic_tank' ? 'Septic tank conformity score' : key === 'offsite_stp' ? 'Off-site STP score' : 'On-site STP score'}
+                                    </Text>
+                                    <View style={styles.numericalRow}>
+                                        <TextInput
+                                            style={styles.numericalInput}
+                                            value={current?.subScore?.toString() || ''}
+                                            onChangeText={(text) => {
+                                                const num = parseInt(text) || 0;
+                                                const max = opt.subScoreMax || 32;
+                                                const clamped = Math.min(Math.max(num, 0), max);
+                                                setResponse(item.id, { ...current, selected: key, subScore: clamped, marks: clamped });
+                                            }}
+                                            keyboardType="number-pad"
+                                            placeholder={`0 - ${opt.subScoreMax}`}
+                                            placeholderTextColor="#8A9BAE"
+                                        />
+                                        <Text style={styles.numericalRange}>/ {opt.subScoreMax}</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
                     );
                 })}
             </View>
@@ -264,73 +313,13 @@ export default function InspectionForm() {
         router.replace(`/(divisional)/summary/${id}`);
     }
 
-    async function generateBlankPDF() {
-        try {
-            let tableRows = '';
 
-            items.forEach(item => {
-                tableRows += `
-                    <tr>
-                        <td style="padding: 8px; border: 1px solid #b2c9c9; text-align: center; font-size: 13px;">${item.id.toUpperCase()}</td>
-                        <td style="padding: 8px; border: 1px solid #b2c9c9; font-size: 13px;">
-                            <div style="font-weight: 600; margin-bottom: 4px;">${item.label}</div>
-                            ${item.description ? `<div style="font-size: 12px; color: #555;">${item.description}</div>` : ''}
-                        </td>
-                        <td style="padding: 8px; border: 1px solid #b2c9c9; text-align: center; font-size: 13px;">${item.max_marks}</td>
-                        <td style="padding: 8px; border: 1px solid #b2c9c9;"></td>
-                    </tr>
-                `;
-            });
 
-            const html = `
-                <!DOCTYPE html>
-                <html>
-                    <head>
-                        <meta charset="utf-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                        <style>
-                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #1A1A2E; }
-                            .header { text-align: center; margin-bottom: 25px; }
-                            .header h1 { color: #0D7377; margin: 0; font-size: 22px; font-weight: normal; letter-spacing: 1px; }
-                            .header p { color: #1A1A2E; margin-top: 8px; font-size: 14px; font-weight: 500; }
-                            .marks-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                            .marks-table th { background-color: #0D7377; color: white; padding: 12px 8px; text-align: left; border: 1px solid #0D7377; font-size: 13px; font-weight: 600; }
-                            .marks-table th.center { text-align: center; }
-                            .marks-table td { padding: 8px; border: 1px solid #b2c9c9; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="header">
-                            <h1>SGLR RATING</h1>
-                            <p>${resort?.name || 'Resort'}</p>
-                        </div>
-                        <table class="marks-table">
-                            <thead>
-                                <tr>
-                                    <th class="center" style="width: 40px;">ID</th>
-                                    <th>Description</th>
-                                    <th class="center" style="width: 70px;">Max Marks</th>
-                                    <th class="center" style="width: 100px;">Marks Awarded</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tableRows}
-                            </tbody>
-                        </table>
-                    </body>
-                </html>
-            `;
-
-            const { uri } = await Print.printToFileAsync({ html });
-            await Sharing.shareAsync(uri, { dialogTitle: 'Download Blank Checklist', UTI: 'com.adobe.pdf' });
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            Alert.alert('Error', 'Could not generate PDF report');
-        }
-    }
-
-    if (loading || !resort) {
+    if (loading) {
         return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
+    }
+    if (!resort) {
+        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
     }
 
     const categories = ['A', 'B', 'C'];
@@ -365,7 +354,7 @@ export default function InspectionForm() {
                 <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
                     <TouchableOpacity
                         style={styles.blankPdfBtn}
-                        onPress={generateBlankPDF}
+                        onPress={() => generatePreInspectionPDF(resort, items)}
                     >
                         <Text style={styles.blankPdfBtnText}>↓ Download Blank Checklist</Text>
                     </TouchableOpacity>
@@ -452,5 +441,6 @@ const styles = StyleSheet.create({
     modalBtnPrimary: { backgroundColor: '#0D9DA8', padding: 14, borderRadius: 20, alignItems: 'center', marginBottom: 10 },
     modalBtnPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     modalBtnSecondary: { padding: 14, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E63946' },
-    modalBtnSecondaryText: { color: '#E63946', fontSize: 15, fontWeight: '600' },
+    modalBtnSecondaryText: { color: '#E63946', fontSize: 15, fontWeight: '600' }, subScoreBox: { marginLeft: 30, marginTop: 4, marginBottom: 8, padding: 12, backgroundColor: '#EEF4F5', borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#0D9DA8' },
+    subScoreLabel: { fontSize: 12, color: '#0D7377', fontWeight: '600', marginBottom: 8 },
 });

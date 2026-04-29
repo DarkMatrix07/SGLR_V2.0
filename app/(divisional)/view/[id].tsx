@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
-import { generateAndSharePDF } from '../../../utils/generatePDF';
+import { generatePostInspectionPDF } from '../../../utils/generatePDF';
 
 type ChecklistItem = {
     id: string;
     category: string;
+    subcategory: string;
     label: string;
+    description: string | null;
     input_type: string;
+    min_marks: number;
     max_marks: number;
     options: any[] | null;
     visibility_condition: any | null;
@@ -92,10 +95,12 @@ export default function ViewInspection() {
         return 'Poor';
     }
 
-    if (loading || !resort) {
+    if (loading) {
         return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
     }
-
+    if (!resort) {
+        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
+    }
     if (!inspection) {
         return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>No inspection found</Text></View>;
     }
@@ -156,7 +161,7 @@ export default function ViewInspection() {
 
             <TouchableOpacity
                 style={styles.downloadBtn}
-                onPress={() => generateAndSharePDF(resort, inspection, items)}
+                onPress={() => generatePostInspectionPDF(resort, inspection, items)}
             >
                 <Text style={styles.downloadBtnText}>Download PDF</Text>
             </TouchableOpacity>
