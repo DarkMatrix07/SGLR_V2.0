@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Vibration } from 'react-native';
+import Spinner from '../../../components/Spinner';
+import { formatStars } from '../../../lib/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { getSession } from '../../../lib/authRouting';
@@ -91,6 +93,7 @@ export default function Summary() {
                             Alert.alert('Submission Failed', 'Please check your internet connection and try again.');
                             setSubmitting(false);
                         } else {
+                            Vibration.vibrate(40);
                             await AsyncStorage.removeItem(`draft_${id}`);
                             // Pop inspect + summary off the stack, then go to confirm
                             if (router.canDismiss()) router.dismissAll();
@@ -102,11 +105,9 @@ export default function Summary() {
         );
     }
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
-    }
+    if (loading) return <Spinner />;
     if (!resort) {
-        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
+        return <View style={styles.errorScreen}><Text style={styles.errorText}>Failed to load resort data</Text></View>;
     }
 
     const total = getTotalScore(items, responses);
@@ -123,7 +124,7 @@ export default function Summary() {
                 <View style={styles.scoreCard}>
                     <Text style={styles.scoreLabel}>Total Score</Text>
                     <Text style={[styles.scoreValue, { color: getScoreColor(total) }]}>{total} / 200</Text>
-                    <Text style={styles.starsText}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</Text>
+                    <Text style={styles.starsText}>{formatStars(stars)}</Text>
                     <Text style={[styles.performanceLabel, { color: getScoreColor(total) }]}>
                         {getStarLabel(stars)}
                     </Text>
@@ -178,7 +179,8 @@ export default function Summary() {
 }
 
 const styles = StyleSheet.create({
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
+    errorText: { color: '#8A9BAE', fontSize: 16 },
     resortHeader: { backgroundColor: '#0D7377', padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import Spinner from '../../../components/Spinner';
+import { formatDate } from '../../../lib/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { generatePreInspectionPDF } from '../../../utils/generatePDF';
@@ -35,15 +37,23 @@ export default function InspectionForm() {
     const [loading, setLoading] = useState(true);
     const [showDraftModal, setShowDraftModal] = useState(false);
     const [draftTimestamp, setDraftTimestamp] = useState<string | null>(null);
+    const [priorRejection, setPriorRejection] = useState<{ comments: string | null; reviewedAt: string | null } | null>(null);
 
     useEffect(() => {
         async function init() {
-            const [resortRes, itemsRes] = await Promise.all([
-                supabase.from('resorts').select('id, name, serial_no, area, owner_name, owner_phone, room_count').eq('id', id).single(),
+            const [resortRes, itemsRes, lastInspRes] = await Promise.all([
+                supabase.from('resorts').select('id, name, serial_no, area, owner_name, owner_phone, room_count').eq('id', id).maybeSingle(),
                 supabase.from('checklist_items').select('*').order('sort_order'),
+                supabase.from('inspections').select('status, district_comments, reviewed_at').eq('resort_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
             ]);
             if (resortRes.data) setResort(resortRes.data);
             if (itemsRes.data) setItems(itemsRes.data);
+            if (lastInspRes.data?.status === 'rejected') {
+                setPriorRejection({
+                    comments: lastInspRes.data.district_comments,
+                    reviewedAt: lastInspRes.data.reviewed_at,
+                });
+            }
 
             // Check for existing draft.
             // If saved within the last 60s we treat this as a return-from-Summary and silently restore.
@@ -281,24 +291,27 @@ export default function InspectionForm() {
 
 
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
-    }
+    if (loading) return <Spinner />;
     if (!resort) {
-        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
+        return <View style={styles.errorScreen}><Text style={styles.errorText}>Failed to load resort data</Text></View>;
     }
 
     const totalScore = getTotalScore(items, responses);
+    const visibleItems = items.filter(i => isVisible(i, responses));
+    const answeredCount = visibleItems.filter(i => responses[i.id]).length;
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#EEF4F5' }}>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1, backgroundColor: '#EEF4F5' }}
+        >
             <Modal visible={showDraftModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalBox}>
                         <Text style={styles.modalTitle}>Draft Found</Text>
                         <Text style={styles.modalText}>
                             You have an unfinished inspection for this resort.
-                            {draftTimestamp && `\n\nLast saved: ${new Date(draftTimestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                            {draftTimestamp && `\n\nLast saved: ${formatDate(draftTimestamp)}`}
                         </Text>
                         <TouchableOpacity style={styles.modalBtnPrimary} onPress={resumeDraft}>
                             <Text style={styles.modalBtnPrimaryText}>Resume Draft</Text>
@@ -314,6 +327,18 @@ export default function InspectionForm() {
                     <Text style={styles.resortName}>{resort.serial_no}. {resort.name}</Text>
                     <Text style={styles.resortArea}>{resort.area}</Text>
                 </View>
+
+                {priorRejection && (
+                    <View style={styles.rejectionBanner}>
+                        <Text style={styles.rejectionTitle}>Previous inspection was rejected</Text>
+                        {priorRejection.comments
+                            ? <Text style={styles.rejectionText}>{priorRejection.comments}</Text>
+                            : <Text style={styles.rejectionText}>No reason was provided. Address any obvious gaps and resubmit.</Text>}
+                        {priorRejection.reviewedAt && (
+                            <Text style={styles.rejectionDate}>Rejected on {formatDate(priorRejection.reviewedAt)}</Text>
+                        )}
+                    </View>
+                )}
 
                 <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
                     <TouchableOpacity
@@ -347,19 +372,18 @@ export default function InspectionForm() {
 
             <View style={styles.bottomBar}>
                 <View>
-                    <Text style={styles.scoreLabel}>Total Score</Text>
+                    <Text style={styles.scoreLabel}>Total Score • {answeredCount}/{visibleItems.length} answered</Text>
                     <Text style={[styles.scoreValue, totalScore < 0 && { color: '#E63946' }]}>{totalScore} / 200</Text>
                 </View>
                 <TouchableOpacity style={styles.reviewBtn} onPress={handleReview}>
                     <Text style={styles.reviewBtnText}>Review →</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
     resortHeader: { backgroundColor: '#0D7377', padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
@@ -407,4 +431,10 @@ const styles = StyleSheet.create({
     modalBtnSecondary: { padding: 14, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E63946' },
     modalBtnSecondaryText: { color: '#E63946', fontSize: 15, fontWeight: '600' }, subScoreBox: { marginLeft: 30, marginTop: 4, marginBottom: 8, padding: 12, backgroundColor: '#EEF4F5', borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#0D9DA8' },
     subScoreLabel: { fontSize: 12, color: '#0D7377', fontWeight: '600', marginBottom: 8 },
+    rejectionBanner: { marginHorizontal: 12, marginTop: 12, padding: 14, backgroundColor: '#FFF4F4', borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#E63946' },
+    rejectionTitle: { fontSize: 13, fontWeight: '700', color: '#E63946', marginBottom: 6 },
+    rejectionText: { fontSize: 13, color: '#1A1A2E', lineHeight: 18 },
+    rejectionDate: { fontSize: 11, color: '#8A9BAE', marginTop: 6, fontStyle: 'italic' },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
+    errorText: { color: '#8A9BAE', fontSize: 16 },
 });

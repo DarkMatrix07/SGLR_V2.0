@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import Spinner from '../components/Spinner';
 import { useRouter } from 'expo-router';
 import { getRouteForRole, getSession, signIn } from '../lib/authRouting';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [phone, setPhone] = useState('+91');
+  const [localPhone, setLocalPhone] = useState('');
   const [pin, setPin] = useState('');
-
-  function handlePhoneChange(raw: string) {
-    const digits = raw.replace(/\D/g, '');
-    const local = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
-    setPhone(`+91${local.slice(0, 10)}`);
-  }
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState('');
@@ -30,11 +25,18 @@ export default function LoginScreen() {
     return () => { active = false; };
   }, [router]);
 
+  function handleLocalPhoneChange(raw: string) {
+    // Strip non-digits, drop a leading +91/91 if user pasted a full number, cap at 10
+    let digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('91') && digits.length > 10) digits = digits.slice(2);
+    setLocalPhone(digits.slice(0, 10));
+  }
+
   async function handleLogin() {
     setLoading(true);
     setError('');
     try {
-      const session = await signIn(phone, pin);
+      const session = await signIn(`+91${localPhone}`, pin);
       router.replace(getRouteForRole(session.role) as never);
     } catch (e: any) {
       setError(e?.message ?? 'Login failed.');
@@ -43,14 +45,11 @@ export default function LoginScreen() {
     }
   }
 
-  if (checkingSession) {
-    return (
-      <View style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#0D9DA8" />
-        <Text style={styles.loadingText}>Checking access...</Text>
-      </View>
-    );
-  }
+  if (checkingSession) return <Spinner text="Checking access..." />;
+
+  const phoneValid = /^\d{10}$/.test(localPhone);
+  const pinValid = /^\d{4}$/.test(pin);
+  const canSubmit = phoneValid && pinValid && !loading;
 
   return (
     <KeyboardAvoidingView
@@ -63,16 +62,22 @@ export default function LoginScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={handlePhoneChange}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="+919876543210"
-            placeholderTextColor="#8A9BAE"
-          />
+          <View style={styles.phoneRow}>
+            <View style={styles.phonePrefix}>
+              <Text style={styles.phonePrefixText}>+91</Text>
+            </View>
+            <TextInput
+              style={styles.phoneInput}
+              value={localPhone}
+              onChangeText={handleLocalPhoneChange}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="9876543210"
+              placeholderTextColor="#8A9BAE"
+              maxLength={10}
+            />
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -85,12 +90,17 @@ export default function LoginScreen() {
             secureTextEntry
             placeholder="4-digit PIN"
             placeholderTextColor="#8A9BAE"
+            maxLength={4}
           />
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Pressable style={[styles.loginButton, loading && styles.loginButtonDisabled]} onPress={handleLogin} disabled={loading}>
+        <Pressable
+          style={[styles.loginButton, !canSubmit && styles.loginButtonDisabled]}
+          onPress={handleLogin}
+          disabled={!canSubmit}
+        >
           <Text style={styles.loginButtonText}>{loading ? 'Signing In...' : 'Login'}</Text>
         </Pressable>
       </View>
@@ -100,16 +110,18 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#EEF4F5', justifyContent: 'center', padding: 24 },
-  loadingScreen: { flex: 1, backgroundColor: '#EEF4F5', justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { color: '#8A9BAE', fontSize: 14 },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#E0E8EA' },
+card: { backgroundColor: '#fff', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#E0E8EA' },
   title: { fontSize: 28, fontWeight: '700', color: '#0D7377', textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#8A9BAE', textAlign: 'center', marginTop: 6, marginBottom: 28 },
   field: { marginBottom: 18 },
   label: { fontSize: 13, fontWeight: '600', color: '#1A1A2E', marginBottom: 8 },
   input: { backgroundColor: '#EEF4F5', borderRadius: 12, borderWidth: 1, borderColor: '#E0E8EA', paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: '#1A1A2E' },
+  phoneRow: { flexDirection: 'row', backgroundColor: '#EEF4F5', borderRadius: 12, borderWidth: 1, borderColor: '#E0E8EA', overflow: 'hidden' },
+  phonePrefix: { paddingHorizontal: 14, paddingVertical: 14, backgroundColor: '#E0E8EA', justifyContent: 'center' },
+  phonePrefixText: { fontSize: 16, fontWeight: '600', color: '#0D7377' },
+  phoneInput: { flex: 1, paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: '#1A1A2E', letterSpacing: 0.5 },
   errorText: { color: '#E63946', fontSize: 13, lineHeight: 18, marginBottom: 16 },
   loginButton: { backgroundColor: '#0D9DA8', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  loginButtonDisabled: { opacity: 0.6 },
+  loginButtonDisabled: { opacity: 0.5 },
   loginButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

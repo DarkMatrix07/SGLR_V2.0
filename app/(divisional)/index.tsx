@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { AppSession, getSession } from '../../lib/authRouting';
+import Spinner from '../../components/Spinner';
+import { colors, formatStars } from '../../lib/theme';
 
 type Resort = {
     id: string;
@@ -27,7 +30,10 @@ export default function ResortList() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [session, setSession] = useState<AppSession | null>(null);
     const router = useRouter();
+
+    useFocusEffect(useCallback(() => { getSession().then(setSession); }, []));
 
     useFocusEffect(useCallback(() => { fetchData(); }, []));
 
@@ -78,12 +84,15 @@ export default function ResortList() {
         (r.owner_name && r.owner_name.toLowerCase().includes(search.toLowerCase()))
     );
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
-    }
+    if (loading) return <Spinner />;
 
     return (
         <View style={styles.container}>
+            {session && (
+                <Text style={styles.sessionMeta}>
+                    Logged in as {session.name ?? session.phone} • Divisional
+                </Text>
+            )}
             <TextInput
                 style={styles.search}
                 placeholder="Search resorts..."
@@ -98,12 +107,21 @@ export default function ResortList() {
             <FlatList
                 data={filtered}
                 keyExtractor={r => r.id}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={filtered.length === 0 ? { flex: 1, justifyContent: 'center' } : { paddingBottom: 20 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9DA8']} tintColor="#0D9DA8" />}
+                ListEmptyComponent={
+                    <Text style={styles.empty}>
+                        {search ? 'No resorts match your search.' : 'No resorts available. Pull down to refresh.'}
+                    </Text>
+                }
                 renderItem={({ item: resort }) => {
                     const inspection = getLatestInspection(resort.id);
                     return (
-                        <TouchableOpacity style={styles.card} onPress={() => handlePress(resort)}>
+                        <Pressable
+                            style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+                            android_ripple={{ color: '#D5EFEF' }}
+                            onPress={() => handlePress(resort)}
+                        >
                             <View style={styles.numberCircle}>
                                 <Text style={styles.numberText}>{resort.serial_no}</Text>
                             </View>
@@ -123,11 +141,11 @@ export default function ResortList() {
                                     <Text style={styles.detail}>{resort.owner_name} • {resort.owner_phone}</Text>
                                 )}
                                 {(inspection?.stars ?? 0) > 0 && (
-                                    <Text style={styles.stars}>{"★".repeat(inspection?.stars || 0)} ({inspection?.total_score} pts)</Text>
+                                    <Text style={styles.stars}>{formatStars(inspection?.stars || 0)} ({inspection?.total_score} pts)</Text>
                                 )}
                             </View>
                             <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     );
                 }}
             />
@@ -137,8 +155,9 @@ export default function ResortList() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#EEF4F5' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
     search: { margin: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: '#E0E8EA' },
+    sessionMeta: { fontSize: 12, color: '#8A9BAE', paddingHorizontal: 14, paddingTop: 10 },
+    empty: { textAlign: 'center', color: '#8A9BAE', fontSize: 14, padding: 24 },
     sectionHeader: { marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
     sectionTitle: { fontSize: 14, fontWeight: '700', color: '#0D7377', letterSpacing: 1, marginBottom: 6 },
     sectionLine: { height: 2, backgroundColor: '#0D9DA8' },
@@ -146,6 +165,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 10, borderRadius: 12,
         padding: 14, borderWidth: 1, borderColor: '#E0E8EA',
         flexDirection: 'row', alignItems: 'center',
+        overflow: 'hidden',
     },
     numberCircle: {
         width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#0D9DA8',

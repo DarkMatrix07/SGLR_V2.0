@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, Pressable, TouchableOpacity, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { AppSession, getSession } from '../../lib/authRouting';
+import Spinner from '../../components/Spinner';
+import { formatDate, formatStars } from '../../lib/theme';
 
 type InspectionWithResort = {
     id: string;
@@ -30,9 +33,11 @@ export default function DistrictReview() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [session, setSession] = useState<AppSession | null>(null);
     const router = useRouter();
 
     useFocusEffect(useCallback(() => { fetchData(); }, []));
+    useFocusEffect(useCallback(() => { getSession().then(setSession); }, []));
 
     async function fetchData() {
         const { data } = await supabase
@@ -72,12 +77,15 @@ export default function DistrictReview() {
             return i.resort?.name?.toLowerCase().includes(s) || i.resort?.area?.toLowerCase().includes(s);
         });
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
-    }
+    if (loading) return <Spinner />;
 
     return (
         <View style={styles.container}>
+            {session && (
+                <Text style={styles.sessionMeta}>
+                    Logged in as {session.name ?? session.phone} • District
+                </Text>
+            )}
             <View style={styles.tabRow}>
                 {TABS.map(t => {
                     const count = inspections.reduce((n, i) => n + (i.status === t.key ? 1 : 0), 0);
@@ -111,8 +119,9 @@ export default function DistrictReview() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9DA8']} tintColor="#0D9DA8" />}
                 ListEmptyComponent={<Text style={styles.empty}>No {tab} inspections</Text>}
                 renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={styles.card}
+                    <Pressable
+                        style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+                        android_ripple={{ color: '#D5EFEF' }}
                         onPress={() => router.push({ pathname: '/(district)/detail/[id]', params: { id: item.id } })}
                     >
                         <View style={styles.cardTop}>
@@ -125,14 +134,12 @@ export default function DistrictReview() {
                                     {item.total_score}/200
                                 </Text>
                                 <Text style={styles.starRow}>
-                                    {'★'.repeat(item.stars)}{'☆'.repeat(5 - item.stars)} {getStarLabel(item.stars)}
+                                    {formatStars(item.stars)} {getStarLabel(item.stars)}
                                 </Text>
                             </View>
-                            <Text style={styles.date}>
-                                {new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </Text>
+                            <Text style={styles.date}>{formatDate(item.created_at)}</Text>
                         </View>
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
             />
         </View>
@@ -141,7 +148,6 @@ export default function DistrictReview() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#EEF4F5' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
     tabRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#E0E8EA' },
     tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
     tabActive: { borderBottomWidth: 3, borderBottomColor: '#0D9DA8' },
@@ -149,7 +155,8 @@ const styles = StyleSheet.create({
     tabTextActive: { color: '#0D7377' },
     search: { margin: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: '#E0E8EA' },
     empty: { textAlign: 'center', color: '#8A9BAE', marginTop: 40, fontSize: 15 },
-    card: { backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 10, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E0E8EA' },
+    sessionMeta: { fontSize: 12, color: '#8A9BAE', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+    card: { backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 10, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E0E8EA', overflow: 'hidden' },
     cardTop: { marginBottom: 10 },
     resortName: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
     area: { fontSize: 13, color: '#8A9BAE', marginTop: 2 },

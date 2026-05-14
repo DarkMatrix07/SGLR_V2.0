@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import Spinner from '../../../components/Spinner';
+import { capitalize, formatDate, formatStars } from '../../../lib/theme';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { generatePostInspectionPDF } from '../../../utils/generatePDF';
@@ -26,7 +28,7 @@ export default function ViewInspection() {
         const [resortRes, itemsRes, inspRes] = await Promise.all([
             supabase.from('resorts').select('*').eq('id', id).maybeSingle(),
             supabase.from('checklist_items').select('*').order('sort_order'),
-            supabase.from('inspections').select('*').eq('resort_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+            supabase.from('inspections').select('*, reviewer:officers!inspections_reviewed_by_fkey(name)').eq('resort_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         ]);
         if (resortRes.data) setResort(resortRes.data);
         if (itemsRes.data) setItems(itemsRes.data);
@@ -34,14 +36,12 @@ export default function ViewInspection() {
         setLoading(false);
     }
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
-    }
+    if (loading) return <Spinner />;
     if (!resort) {
-        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
+        return <View style={styles.errorScreen}><Text style={styles.errorText}>Failed to load resort data</Text></View>;
     }
     if (!inspection) {
-        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>No inspection found</Text></View>;
+        return <View style={styles.errorScreen}><Text style={styles.errorText}>No inspection found</Text></View>;
     }
 
     const responses = inspection.responses ?? {};
@@ -56,17 +56,22 @@ export default function ViewInspection() {
             <View style={styles.statusBar}>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(inspection.status) + '20' }]}>
                     <Text style={[styles.statusText, { color: getStatusColor(inspection.status) }]}>
-                        {inspection.status.charAt(0).toUpperCase() + inspection.status.slice(1)}
+                        {capitalize(inspection.status)}
                     </Text>
                 </View>
                 {inspection.district_comments && (
                     <Text style={styles.comments}>District: {inspection.district_comments}</Text>
                 )}
+                {inspection.reviewed_at && (
+                    <Text style={styles.comments}>
+                        Reviewed by {inspection.reviewer?.name ?? 'unknown'} • {formatDate(inspection.reviewed_at)}
+                    </Text>
+                )}
             </View>
 
             <View style={styles.scoreCard}>
                 <Text style={styles.scoreValue}>{inspection.total_score} / 200</Text>
-                <Text style={styles.starsText}>{'★'.repeat(inspection.stars)}{'☆'.repeat(5 - inspection.stars)}</Text>
+                <Text style={styles.starsText}>{formatStars(inspection.stars)}</Text>
                 <Text style={styles.performanceLabel}>{getStarLabel(inspection.stars)}</Text>
             </View>
 
@@ -109,7 +114,8 @@ export default function ViewInspection() {
 }
 
 const styles = StyleSheet.create({
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
+    errorText: { color: '#8A9BAE', fontSize: 16 },
     resortHeader: { backgroundColor: '#0D7377', padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, Vibration } from 'react-native';
+import Spinner from '../../../components/Spinner';
+import { formatDate, formatStars } from '../../../lib/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { getSession } from '../../../lib/authRouting';
@@ -11,6 +13,7 @@ import {
     getAnswerText,
     getScoreColor,
     getStarLabel,
+    getStatusColor,
     isVisible,
 } from '../../../lib/checklist';
 
@@ -28,7 +31,7 @@ export default function InspectionDetail() {
 
     async function fetchData() {
         const [inspRes, itemsRes] = await Promise.all([
-            supabase.from('inspections').select('*, resort:resorts(*)').eq('id', id).maybeSingle(),
+            supabase.from('inspections').select('*, resort:resorts(*), reviewer:officers!inspections_reviewed_by_fkey(name)').eq('id', id).maybeSingle(),
             supabase.from('checklist_items').select('*').order('sort_order'),
         ]);
         if (inspRes.data) {
@@ -79,6 +82,7 @@ export default function InspectionDetail() {
                             Alert.alert('Action Failed', 'Could not update the inspection. Check your connection and try again.');
                             setActing(false);
                         } else {
+                            Vibration.vibrate(40);
                             router.back();
                         }
                     },
@@ -89,11 +93,9 @@ export default function InspectionDetail() {
 
 
 
-    if (loading) {
-        return <View style={styles.center}><ActivityIndicator size="large" color="#0D9DA8" /></View>;
-    }
+    if (loading) return <Spinner />;
     if (!inspection || !resort) {
-        return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load inspection data</Text></View>;
+        return <View style={styles.errorScreen}><Text style={styles.errorText}>Failed to load inspection data</Text></View>;
     }
 
     const isPending = inspection.status === 'pending';
@@ -108,17 +110,26 @@ export default function InspectionDetail() {
                     <Text style={styles.resortArea}>{resort.area} • {resort.room_count ?? '?'} rooms</Text>
                 </View>
 
+                <View style={styles.statusBar}>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(inspection.status) + '20' }]}>
+                        <Text style={[styles.statusBadgeText, { color: getStatusColor(inspection.status) }]}>
+                            {inspection.status.charAt(0).toUpperCase() + inspection.status.slice(1)}
+                        </Text>
+                    </View>
+                    {inspection.reviewed_at && (
+                        <Text style={styles.reviewedMeta}>
+                            Reviewed by {inspection.reviewer?.name ?? 'unknown'} on {formatDate(inspection.reviewed_at)}
+                        </Text>
+                    )}
+                </View>
+
                 <View style={styles.scoreCard}>
                     <Text style={[styles.scoreValue, { color: getScoreColor(inspection.total_score) }]}>
                         {inspection.total_score} / 200
                     </Text>
-                    <Text style={styles.starsText}>
-                        {'★'.repeat(inspection.stars)}{'☆'.repeat(5 - inspection.stars)}
-                    </Text>
+                    <Text style={styles.starsText}>{formatStars(inspection.stars)}</Text>
                     <Text style={styles.performanceLabel}>{getStarLabel(inspection.stars)}</Text>
-                    <Text style={styles.dateText}>
-                        Submitted: {new Date(inspection.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </Text>
+                    <Text style={styles.dateText}>Submitted: {formatDate(inspection.created_at)}</Text>
                 </View>
 
                 {CATEGORIES.map(cat => {
@@ -215,7 +226,6 @@ export default function InspectionDetail() {
 }
 
 const styles = StyleSheet.create({
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
     resortHeader: { backgroundColor: '#0D7377', padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
@@ -236,6 +246,12 @@ const styles = StyleSheet.create({
     commentLabel: { fontSize: 13, fontWeight: '600', color: '#1A1A2E', marginBottom: 6 },
     commentInput: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 14, borderWidth: 1, borderColor: '#E0E8EA', textAlignVertical: 'top', minHeight: 80 },
     commentReadonly: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 14, color: '#1A1A2E', borderWidth: 1, borderColor: '#E0E8EA' },
+    statusBar: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingHorizontal: 12, paddingTop: 12, gap: 10 },
+    statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
+    statusBadgeText: { fontSize: 13, fontWeight: '700' },
+    reviewedMeta: { fontSize: 12, color: '#8A9BAE', flex: 1 },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
+    errorText: { color: '#8A9BAE', fontSize: 16 },
     bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', padding: 16, borderTopWidth: 1, borderColor: '#E0E8EA', elevation: 8, gap: 12 },
     actionBtn: { flex: 1, padding: 14, borderRadius: 20, alignItems: 'center' },
     rejectBtn: { borderWidth: 1.5, borderColor: '#E63946' },
