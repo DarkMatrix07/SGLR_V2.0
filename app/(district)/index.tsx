@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react';
+﻿import { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable, TouchableOpacity, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { AppSession, getSession } from '../../lib/authRouting';
 import Spinner from '../../components/Spinner';
-import { formatDate, formatStars } from '../../lib/theme';
+import { colors,  formatDate, formatStars } from '../../lib/theme';
 
 type InspectionWithResort = {
     id: string;
@@ -63,10 +63,10 @@ export default function DistrictReview() {
     }
 
     function getScoreColor(score: number) {
-        if (score >= 130) return '#2ECC71';
-        if (score >= 90) return '#F4A423';
-        if (score >= 50) return '#FF6B35';
-        return '#E63946';
+        if (score >= 130) return colors.success;
+        if (score >= 90) return colors.warning;
+        if (score >= 50) return colors.orange;
+        return colors.danger;
     }
 
     const filtered = inspections
@@ -116,12 +116,12 @@ export default function DistrictReview() {
                 data={filtered}
                 keyExtractor={i => i.id}
                 contentContainerStyle={{ paddingBottom: 20 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9DA8']} tintColor="#0D9DA8" />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor="#0D9DA8" />}
                 ListEmptyComponent={<Text style={styles.empty}>No {tab} inspections</Text>}
                 renderItem={({ item }) => (
                     <Pressable
                         style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-                        android_ripple={{ color: '#D5EFEF' }}
+                        android_ripple={{ color: colors.primaryLight }}
                         onPress={() => router.push({ pathname: '/(district)/detail/[id]', params: { id: item.id } })}
                     >
                         <View style={styles.cardTop}>
@@ -147,21 +147,21 @@ export default function DistrictReview() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#EEF4F5' },
-    tabRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#E0E8EA' },
+    container: { flex: 1, backgroundColor: colors.bg },
+    tabRow: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderColor: colors.border },
     tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
-    tabActive: { borderBottomWidth: 3, borderBottomColor: '#0D9DA8' },
-    tabText: { fontSize: 14, fontWeight: '600', color: '#8A9BAE' },
-    tabTextActive: { color: '#0D7377' },
-    search: { margin: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: '#E0E8EA' },
-    empty: { textAlign: 'center', color: '#8A9BAE', marginTop: 40, fontSize: 15 },
-    sessionMeta: { fontSize: 12, color: '#8A9BAE', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
-    card: { backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 10, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E0E8EA', overflow: 'hidden' },
+    tabActive: { borderBottomWidth: 3, borderBottomColor: colors.primary },
+    tabText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+    tabTextActive: { color: colors.primaryDark },
+    search: { margin: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: colors.border },
+    empty: { textAlign: 'center', color: colors.textMuted, marginTop: 40, fontSize: 15 },
+    sessionMeta: { fontSize: 12, color: colors.textMuted, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+    card: { backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 10, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
     cardTop: { marginBottom: 10 },
-    resortName: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
-    area: { fontSize: 13, color: '#8A9BAE', marginTop: 2 },
+    resortName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+    area: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
     cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
     score: { fontSize: 18, fontWeight: '700' },
-    starRow: { fontSize: 13, color: '#F4A423', marginTop: 2 },
-    date: { fontSize: 12, color: '#8A9BAE' },
+    starRow: { fontSize: 13, color: colors.warning, marginTop: 2 },
+    date: { fontSize: 12, color: colors.textMuted },
 });

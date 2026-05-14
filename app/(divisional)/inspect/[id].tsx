@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import Spinner from '../../../components/Spinner';
-import { formatDate } from '../../../lib/theme';
+import { colors,  formatDate } from '../../../lib/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { generatePreInspectionPDF } from '../../../utils/generatePDF';
@@ -170,7 +170,7 @@ export default function InspectionForm() {
                             {current?.selected === idx && <View style={styles.radioDot} />}
                         </View>
                         <Text style={styles.radioLabel}>{opt.label}</Text>
-                        <Text style={[styles.radioMarks, opt.marks < 0 && { color: '#E63946' }]}>{opt.marks > 0 ? '+' : ''}{opt.marks}</Text>
+                        <Text style={[styles.radioMarks, opt.marks < 0 && { color: colors.danger }]}>{opt.marks > 0 ? '+' : ''}{opt.marks}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -207,7 +207,7 @@ export default function InspectionForm() {
                                     {isSelected && <View style={styles.radioDot} />}
                                 </View>
                                 <Text style={styles.radioLabel}>{opt.label}</Text>
-                                <Text style={[styles.radioMarks, key === 'single_pit' && { color: '#E63946' }]}>
+                                <Text style={[styles.radioMarks, key === 'single_pit' && { color: colors.danger }]}>
                                     {key === 'single_pit' ? '-8' : `0-${opt.subScoreMax}`}
                                 </Text>
                             </TouchableOpacity>
@@ -303,7 +303,7 @@ export default function InspectionForm() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1, backgroundColor: '#EEF4F5' }}
+            style={{ flex: 1, backgroundColor: colors.bg }}
         >
             <Modal visible={showDraftModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
@@ -373,7 +373,7 @@ export default function InspectionForm() {
             <View style={styles.bottomBar}>
                 <View>
                     <Text style={styles.scoreLabel}>Total Score • {answeredCount}/{visibleItems.length} answered</Text>
-                    <Text style={[styles.scoreValue, totalScore < 0 && { color: '#E63946' }]}>{totalScore} / 200</Text>
+                    <Text style={[styles.scoreValue, totalScore < 0 && { color: colors.danger }]}>{totalScore} / 200</Text>
                 </View>
                 <TouchableOpacity style={styles.reviewBtn} onPress={handleReview}>
                     <Text style={styles.reviewBtnText}>Review →</Text>
@@ -384,57 +384,57 @@ export default function InspectionForm() {
 }
 
 const styles = StyleSheet.create({
-    resortHeader: { backgroundColor: '#0D7377', padding: 16 },
+    resortHeader: { backgroundColor: colors.primaryDark, padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
-    categoryHeader: { fontSize: 15, fontWeight: '700', color: '#0D7377', backgroundColor: '#D5EFEF', padding: 12, marginTop: 12 },
-    subHeader: { fontSize: 13, fontWeight: '600', color: '#8A9BAE', paddingHorizontal: 16, paddingVertical: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-    itemCard: { backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 8, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E0E8EA' },
-    conditionalCard: { marginLeft: 28, borderColor: '#0D9DA8', borderLeftWidth: 3 },
+    categoryHeader: { fontSize: 15, fontWeight: '700', color: colors.primaryDark, backgroundColor: colors.primaryLight, padding: 12, marginTop: 12 },
+    subHeader: { fontSize: 13, fontWeight: '600', color: colors.textMuted, paddingHorizontal: 16, paddingVertical: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+    itemCard: { backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 8, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border },
+    conditionalCard: { marginLeft: 28, borderColor: colors.primary, borderLeftWidth: 3 },
     itemHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-    itemId: { fontSize: 12, fontWeight: '700', color: '#0D9DA8', backgroundColor: '#E1F5EE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginRight: 8 },
-    itemLabel: { fontSize: 14, fontWeight: '600', color: '#1A1A2E', flex: 1 },
-    itemDesc: { fontSize: 12, color: '#8A9BAE', marginBottom: 10, lineHeight: 17 },
+    itemId: { fontSize: 12, fontWeight: '700', color: colors.primary, backgroundColor: '#E1F5EE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginRight: 8 },
+    itemLabel: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    itemDesc: { fontSize: 12, color: colors.textMuted, marginBottom: 10, lineHeight: 17 },
     btnRow: { flexDirection: 'row', gap: 10 },
-    optionBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#E0E8EA', alignItems: 'center' },
-    optionBtnActiveYes: { borderColor: '#2ECC71', backgroundColor: '#2ECC7115' },
-    optionBtnActiveNo: { borderColor: '#E63946', backgroundColor: '#E6394615' },
-    optionBtnText: { fontSize: 14, fontWeight: '600', color: '#8A9BAE' },
-    optionBtnTextActive: { color: '#1A1A2E' },
+    optionBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center' },
+    optionBtnActiveYes: { borderColor: colors.success, backgroundColor: '#2ECC7115' },
+    optionBtnActiveNo: { borderColor: colors.danger, backgroundColor: '#E6394615' },
+    optionBtnText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+    optionBtnTextActive: { color: colors.textPrimary },
     radioRow: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 8, marginBottom: 4 },
     radioRowActive: { backgroundColor: '#E1F5EE' },
-    radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#E0E8EA', marginRight: 10, justifyContent: 'center', alignItems: 'center' },
-    radioActive: { borderColor: '#0D9DA8' },
-    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#0D9DA8' },
-    radioLabel: { flex: 1, fontSize: 13, color: '#1A1A2E' },
-    radioMarks: { fontSize: 13, fontWeight: '600', color: '#0D7377', marginLeft: 8 },
+    radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, marginRight: 10, justifyContent: 'center', alignItems: 'center' },
+    radioActive: { borderColor: colors.primary },
+    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+    radioLabel: { flex: 1, fontSize: 13, color: colors.textPrimary },
+    radioMarks: { fontSize: 13, fontWeight: '600', color: colors.primaryDark, marginLeft: 8 },
     numericalRow: { flexDirection: 'row', alignItems: 'center' },
-    numericalInput: { flex: 1, backgroundColor: '#EEF4F5', borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600', textAlign: 'center' },
-    numericalRange: { fontSize: 14, color: '#8A9BAE', marginLeft: 8 },
-    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderTopWidth: 1, borderColor: '#E0E8EA', elevation: 8 },
-    scoreLabel: { fontSize: 12, color: '#8A9BAE' },
-    scoreValue: { fontSize: 20, fontWeight: '700', color: '#0D7377' },
-    reviewBtn: { backgroundColor: '#0D9DA8', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
+    numericalInput: { flex: 1, backgroundColor: colors.bg, borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600', textAlign: 'center' },
+    numericalRange: { fontSize: 14, color: colors.textMuted, marginLeft: 8 },
+    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderTopWidth: 1, borderColor: colors.border, elevation: 8 },
+    scoreLabel: { fontSize: 12, color: colors.textMuted },
+    scoreValue: { fontSize: 20, fontWeight: '700', color: colors.primaryDark },
+    reviewBtn: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
     reviewBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-    optionBtnActiveManual: { borderColor: '#0D9DA8', backgroundColor: '#0D9DA815' },
+    optionBtnActiveManual: { borderColor: colors.primary, backgroundColor: '#0D9DA815' },
     manualRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
-    manualInput: { flex: 1, backgroundColor: '#EEF4F5', borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600', textAlign: 'center' },
-    manualRange: { fontSize: 14, color: '#8A9BAE', marginLeft: 8 },
-    blankPdfBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#0D9DA8', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, alignSelf: 'flex-start', backgroundColor: '#fff' },
-    blankPdfBtnText: { color: '#0D9DA8', fontSize: 13, fontWeight: '700' },
+    manualInput: { flex: 1, backgroundColor: colors.bg, borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600', textAlign: 'center' },
+    manualRange: { fontSize: 14, color: colors.textMuted, marginLeft: 8 },
+    blankPdfBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, alignSelf: 'flex-start', backgroundColor: '#fff' },
+    blankPdfBtnText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
     modalBox: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 340 },
-    modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', marginBottom: 8 },
-    modalText: { fontSize: 14, color: '#8A9BAE', lineHeight: 20, marginBottom: 20 },
-    modalBtnPrimary: { backgroundColor: '#0D9DA8', padding: 14, borderRadius: 20, alignItems: 'center', marginBottom: 10 },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
+    modalText: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginBottom: 20 },
+    modalBtnPrimary: { backgroundColor: colors.primary, padding: 14, borderRadius: 20, alignItems: 'center', marginBottom: 10 },
     modalBtnPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-    modalBtnSecondary: { padding: 14, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E63946' },
-    modalBtnSecondaryText: { color: '#E63946', fontSize: 15, fontWeight: '600' }, subScoreBox: { marginLeft: 30, marginTop: 4, marginBottom: 8, padding: 12, backgroundColor: '#EEF4F5', borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#0D9DA8' },
-    subScoreLabel: { fontSize: 12, color: '#0D7377', fontWeight: '600', marginBottom: 8 },
-    rejectionBanner: { marginHorizontal: 12, marginTop: 12, padding: 14, backgroundColor: '#FFF4F4', borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#E63946' },
-    rejectionTitle: { fontSize: 13, fontWeight: '700', color: '#E63946', marginBottom: 6 },
-    rejectionText: { fontSize: 13, color: '#1A1A2E', lineHeight: 18 },
-    rejectionDate: { fontSize: 11, color: '#8A9BAE', marginTop: 6, fontStyle: 'italic' },
-    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
-    errorText: { color: '#8A9BAE', fontSize: 16 },
+    modalBtnSecondary: { padding: 14, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: colors.danger },
+    modalBtnSecondaryText: { color: colors.danger, fontSize: 15, fontWeight: '600' }, subScoreBox: { marginLeft: 30, marginTop: 4, marginBottom: 8, padding: 12, backgroundColor: colors.bg, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: colors.primary },
+    subScoreLabel: { fontSize: 12, color: colors.primaryDark, fontWeight: '600', marginBottom: 8 },
+    rejectionBanner: { marginHorizontal: 12, marginTop: 12, padding: 14, backgroundColor: colors.rejectBg, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: colors.danger },
+    rejectionTitle: { fontSize: 13, fontWeight: '700', color: colors.danger, marginBottom: 6 },
+    rejectionText: { fontSize: 13, color: colors.textPrimary, lineHeight: 18 },
+    rejectionDate: { fontSize: 11, color: colors.textMuted, marginTop: 6, fontStyle: 'italic' },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+    errorText: { color: colors.textMuted, fontSize: 16 },
 });

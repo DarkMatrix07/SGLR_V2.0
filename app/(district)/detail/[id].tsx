@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, Vibration } from 'react-native';
 import Spinner from '../../../components/Spinner';
-import { formatDate, formatStars } from '../../../lib/theme';
+import { colors,  formatDate, formatStars } from '../../../lib/theme';
+import { InspectionWithReviewer, Resort } from '../../../lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { getSession } from '../../../lib/authRouting';
@@ -20,8 +21,8 @@ import {
 export default function InspectionDetail() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const [inspection, setInspection] = useState<any>(null);
-    const [resort, setResort] = useState<any>(null);
+    const [inspection, setInspection] = useState<InspectionWithReviewer | null>(null);
+    const [resort, setResort] = useState<Resort | null>(null);
     const [items, setItems] = useState<ChecklistItem[]>([]);
     const [comments, setComments] = useState('');
     const [loading, setLoading] = useState(true);
@@ -103,7 +104,7 @@ export default function InspectionDetail() {
     const responses = inspection.responses ?? {};
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#EEF4F5' }}>
+        <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <ScrollView contentContainerStyle={{ paddingBottom: 160 }}>
                 <View style={styles.resortHeader}>
                     <Text style={styles.resortName}>{resort.serial_no}. {resort.name}</Text>
@@ -149,11 +150,11 @@ export default function InspectionDetail() {
                                     <View key={item.id} style={[styles.itemRow, !answered && styles.itemRowUnanswered]}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.itemLabel}>{item.id.toUpperCase()}. {item.label}</Text>
-                                            <Text style={[styles.itemAnswer, !answered && { color: '#E63946' }]}>
+                                            <Text style={[styles.itemAnswer, !answered && { color: colors.danger }]}>
                                                 {getAnswerText(item, r)}
                                             </Text>
                                         </View>
-                                        <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: '#E63946' }]}>
+                                        <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: colors.danger }]}>
                                             {r?.marks ?? 0}
                                         </Text>
                                     </View>
@@ -226,40 +227,40 @@ export default function InspectionDetail() {
 }
 
 const styles = StyleSheet.create({
-    resortHeader: { backgroundColor: '#0D7377', padding: 16 },
+    resortHeader: { backgroundColor: colors.primaryDark, padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
-    scoreCard: { backgroundColor: '#fff', margin: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: '#E0E8EA' },
+    scoreCard: { backgroundColor: '#fff', margin: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     scoreValue: { fontSize: 32, fontWeight: '700' },
-    starsText: { fontSize: 22, color: '#F4A423', marginTop: 6 },
-    performanceLabel: { fontSize: 15, fontWeight: '600', color: '#0D7377', marginTop: 4 },
-    dateText: { fontSize: 12, color: '#8A9BAE', marginTop: 8 },
-    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#D5EFEF', padding: 12, marginTop: 8 },
-    catTitle: { fontSize: 14, fontWeight: '700', color: '#0D7377', flex: 1 },
-    catScore: { fontSize: 16, fontWeight: '700', color: '#0D7377' },
-    itemRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 1, padding: 12, borderLeftWidth: 3, borderLeftColor: '#2ECC71' },
-    itemRowUnanswered: { borderLeftColor: '#E63946' },
-    itemLabel: { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
-    itemAnswer: { fontSize: 12, color: '#8A9BAE', marginTop: 2 },
-    itemMarks: { fontSize: 16, fontWeight: '700', color: '#0D7377', marginLeft: 12, minWidth: 30, textAlign: 'right' },
+    starsText: { fontSize: 22, color: colors.warning, marginTop: 6 },
+    performanceLabel: { fontSize: 15, fontWeight: '600', color: colors.primaryDark, marginTop: 4 },
+    dateText: { fontSize: 12, color: colors.textMuted, marginTop: 8 },
+    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.primaryLight, padding: 12, marginTop: 8 },
+    catTitle: { fontSize: 14, fontWeight: '700', color: colors.primaryDark, flex: 1 },
+    catScore: { fontSize: 16, fontWeight: '700', color: colors.primaryDark },
+    itemRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 1, padding: 12, borderLeftWidth: 3, borderLeftColor: colors.success },
+    itemRowUnanswered: { borderLeftColor: colors.danger },
+    itemLabel: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    itemAnswer: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    itemMarks: { fontSize: 16, fontWeight: '700', color: colors.primaryDark, marginLeft: 12, minWidth: 30, textAlign: 'right' },
     commentBox: { margin: 12 },
-    commentLabel: { fontSize: 13, fontWeight: '600', color: '#1A1A2E', marginBottom: 6 },
-    commentInput: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 14, borderWidth: 1, borderColor: '#E0E8EA', textAlignVertical: 'top', minHeight: 80 },
-    commentReadonly: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 14, color: '#1A1A2E', borderWidth: 1, borderColor: '#E0E8EA' },
+    commentLabel: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 6 },
+    commentInput: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 14, borderWidth: 1, borderColor: colors.border, textAlignVertical: 'top', minHeight: 80 },
+    commentReadonly: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 14, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border },
     statusBar: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingHorizontal: 12, paddingTop: 12, gap: 10 },
     statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
     statusBadgeText: { fontSize: 13, fontWeight: '700' },
-    reviewedMeta: { fontSize: 12, color: '#8A9BAE', flex: 1 },
-    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
-    errorText: { color: '#8A9BAE', fontSize: 16 },
-    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', padding: 16, borderTopWidth: 1, borderColor: '#E0E8EA', elevation: 8, gap: 12 },
+    reviewedMeta: { fontSize: 12, color: colors.textMuted, flex: 1 },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+    errorText: { color: colors.textMuted, fontSize: 16 },
+    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', padding: 16, borderTopWidth: 1, borderColor: colors.border, elevation: 8, gap: 12 },
     actionBtn: { flex: 1, padding: 14, borderRadius: 20, alignItems: 'center' },
-    rejectBtn: { borderWidth: 1.5, borderColor: '#E63946' },
-    rejectBtnText: { color: '#E63946', fontSize: 15, fontWeight: '600' },
-    approveBtn: { backgroundColor: '#2ECC71' },
+    rejectBtn: { borderWidth: 1.5, borderColor: colors.danger },
+    rejectBtnText: { color: colors.danger, fontSize: 15, fontWeight: '600' },
+    approveBtn: { backgroundColor: colors.success },
     approveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-    unfreezeBtn: { borderWidth: 1.5, borderColor: '#F4A423' },
-    unfreezeBtnText: { color: '#F4A423', fontSize: 15, fontWeight: '600' },
-    downloadBtn: { margin: 12, marginTop: 16, backgroundColor: '#0D9DA8', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20, elevation: 6, alignItems: 'center' },
+    unfreezeBtn: { borderWidth: 1.5, borderColor: colors.warning },
+    unfreezeBtnText: { color: colors.warning, fontSize: 15, fontWeight: '600' },
+    downloadBtn: { margin: 12, marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20, elevation: 6, alignItems: 'center' },
     downloadBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

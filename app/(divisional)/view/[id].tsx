@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+﻿import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import Spinner from '../../../components/Spinner';
-import { capitalize, formatDate, formatStars } from '../../../lib/theme';
+import { colors,  capitalize, formatDate, formatStars } from '../../../lib/theme';
+import { InspectionWithReviewer, Resort } from '../../../lib/types';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { generatePostInspectionPDF } from '../../../utils/generatePDF';
@@ -17,8 +18,8 @@ import {
 
 export default function ViewInspection() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const [resort, setResort] = useState<any>(null);
-    const [inspection, setInspection] = useState<any>(null);
+    const [resort, setResort] = useState<Resort | null>(null);
+    const [inspection, setInspection] = useState<InspectionWithReviewer | null>(null);
     const [items, setItems] = useState<ChecklistItem[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -47,7 +48,7 @@ export default function ViewInspection() {
     const responses = inspection.responses ?? {};
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: '#EEF4F5' }} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: 40 }}>
             <View style={styles.resortHeader}>
                 <Text style={styles.resortName}>{resort.serial_no}. {resort.name}</Text>
                 <Text style={styles.resortArea}>{resort.area}</Text>
@@ -93,7 +94,7 @@ export default function ViewInspection() {
                                         <Text style={styles.itemLabel}>{item.id.toUpperCase()}. {item.label}</Text>
                                         <Text style={styles.itemAnswer}>{getAnswerText(item, r)}</Text>
                                     </View>
-                                    <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: '#E63946' }]}>
+                                    <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: colors.danger }]}>
                                         {r?.marks ?? 0}
                                     </Text>
                                 </View>
@@ -114,26 +115,26 @@ export default function ViewInspection() {
 }
 
 const styles = StyleSheet.create({
-    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
-    errorText: { color: '#8A9BAE', fontSize: 16 },
-    resortHeader: { backgroundColor: '#0D7377', padding: 16 },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+    errorText: { color: colors.textMuted, fontSize: 16 },
+    resortHeader: { backgroundColor: colors.primaryDark, padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
     statusBar: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
     statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
     statusText: { fontSize: 13, fontWeight: '700' },
-    comments: { fontSize: 13, color: '#8A9BAE', flex: 1 },
-    scoreCard: { backgroundColor: '#fff', marginHorizontal: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: '#E0E8EA' },
-    scoreValue: { fontSize: 32, fontWeight: '700', color: '#0D7377' },
-    starsText: { fontSize: 22, color: '#F4A423', marginTop: 6 },
-    performanceLabel: { fontSize: 15, fontWeight: '600', color: '#0D7377', marginTop: 4 },
-    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#D5EFEF', padding: 12, marginTop: 8 },
-    catTitle: { fontSize: 14, fontWeight: '700', color: '#0D7377', flex: 1 },
-    catScore: { fontSize: 16, fontWeight: '700', color: '#0D7377' },
+    comments: { fontSize: 13, color: colors.textMuted, flex: 1 },
+    scoreCard: { backgroundColor: '#fff', marginHorizontal: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+    scoreValue: { fontSize: 32, fontWeight: '700', color: colors.primaryDark },
+    starsText: { fontSize: 22, color: colors.warning, marginTop: 6 },
+    performanceLabel: { fontSize: 15, fontWeight: '600', color: colors.primaryDark, marginTop: 4 },
+    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.primaryLight, padding: 12, marginTop: 8 },
+    catTitle: { fontSize: 14, fontWeight: '700', color: colors.primaryDark, flex: 1 },
+    catScore: { fontSize: 16, fontWeight: '700', color: colors.primaryDark },
     itemRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 1, padding: 12 },
-    itemLabel: { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
-    itemAnswer: { fontSize: 12, color: '#8A9BAE', marginTop: 2 },
-    itemMarks: { fontSize: 16, fontWeight: '700', color: '#0D7377', marginLeft: 12, minWidth: 30, textAlign: 'right' },
-    downloadBtn: { marginHorizontal: 12, marginTop: 24, backgroundColor: '#0D9DA8', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20, elevation: 6, alignItems: 'center' },
+    itemLabel: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    itemAnswer: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    itemMarks: { fontSize: 16, fontWeight: '700', color: colors.primaryDark, marginLeft: 12, minWidth: 30, textAlign: 'right' },
+    downloadBtn: { marginHorizontal: 12, marginTop: 24, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20, elevation: 6, alignItems: 'center' },
     downloadBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

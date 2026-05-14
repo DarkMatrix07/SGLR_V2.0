@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+﻿import { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -63,10 +63,10 @@ export default function ResortList() {
     }
 
     function getStatusColor(status: string) {
-        if (status === 'approved') return '#2ECC71';
-        if (status === 'pending') return '#F4A423';
-        if (status === 'rejected') return '#E63946';
-        return '#8A9BAE';
+        if (status === 'approved') return colors.success;
+        if (status === 'pending') return colors.warning;
+        if (status === 'rejected') return colors.danger;
+        return colors.textMuted;
     }
 
     function handlePress(resort: Resort) {
@@ -108,7 +108,7 @@ export default function ResortList() {
                 data={filtered}
                 keyExtractor={r => r.id}
                 contentContainerStyle={filtered.length === 0 ? { flex: 1, justifyContent: 'center' } : { paddingBottom: 20 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9DA8']} tintColor="#0D9DA8" />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor="#0D9DA8" />}
                 ListEmptyComponent={
                     <Text style={styles.empty}>
                         {search ? 'No resorts match your search.' : 'No resorts available. Pull down to refresh.'}
@@ -119,7 +119,7 @@ export default function ResortList() {
                     return (
                         <Pressable
                             style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-                            android_ripple={{ color: '#D5EFEF' }}
+                            android_ripple={{ color: colors.primaryLight }}
                             onPress={() => handlePress(resort)}
                         >
                             <View style={styles.numberCircle}>
@@ -154,30 +154,30 @@ export default function ResortList() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#EEF4F5' },
-    search: { margin: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: '#E0E8EA' },
-    sessionMeta: { fontSize: 12, color: '#8A9BAE', paddingHorizontal: 14, paddingTop: 10 },
-    empty: { textAlign: 'center', color: '#8A9BAE', fontSize: 14, padding: 24 },
+    container: { flex: 1, backgroundColor: colors.bg },
+    search: { margin: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: colors.border },
+    sessionMeta: { fontSize: 12, color: colors.textMuted, paddingHorizontal: 14, paddingTop: 10 },
+    empty: { textAlign: 'center', color: colors.textMuted, fontSize: 14, padding: 24 },
     sectionHeader: { marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
-    sectionTitle: { fontSize: 14, fontWeight: '700', color: '#0D7377', letterSpacing: 1, marginBottom: 6 },
-    sectionLine: { height: 2, backgroundColor: '#0D9DA8' },
+    sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.primaryDark, letterSpacing: 1, marginBottom: 6 },
+    sectionLine: { height: 2, backgroundColor: colors.primary },
     card: {
         backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 10, borderRadius: 12,
-        padding: 14, borderWidth: 1, borderColor: '#E0E8EA',
+        padding: 14, borderWidth: 1, borderColor: colors.border,
         flexDirection: 'row', alignItems: 'center',
         overflow: 'hidden',
     },
     numberCircle: {
-        width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#0D9DA8',
+        width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: colors.primary,
         justifyContent: 'center', alignItems: 'center', marginRight: 14,
     },
-    numberText: { fontSize: 16, fontWeight: '600', color: '#0D7377' },
+    numberText: { fontSize: 16, fontWeight: '600', color: colors.primaryDark },
     cardContent: { flex: 1 },
     nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 },
-    resortName: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginRight: 6 },
-    unratedText: { fontSize: 13, fontStyle: 'italic', color: '#8A9BAE' },
+    resortName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginRight: 6 },
+    unratedText: { fontSize: 13, fontStyle: 'italic', color: colors.textMuted },
     statusText: { fontSize: 13, fontStyle: 'italic', fontWeight: '600' },
-    detail: { fontSize: 13, color: '#8A9BAE', lineHeight: 18 },
-    stars: { fontSize: 13, color: '#F4A423', marginTop: 4 },
-    chevron: { fontSize: 28, color: '#0D9DA8', marginLeft: 8 },
+    detail: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+    stars: { fontSize: 13, color: colors.warning, marginTop: 4 },
+    chevron: { fontSize: 28, color: colors.primary, marginLeft: 8 },
 });

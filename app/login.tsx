@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Spinner from '../components/Spinner';
 import { useRouter } from 'expo-router';
 import { getRouteForRole, getSession, signIn } from '../lib/authRouting';
+import { colors } from '../lib/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -109,19 +110,19 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEF4F5', justifyContent: 'center', padding: 24 },
-card: { backgroundColor: '#fff', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#E0E8EA' },
-  title: { fontSize: 28, fontWeight: '700', color: '#0D7377', textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#8A9BAE', textAlign: 'center', marginTop: 6, marginBottom: 28 },
+  container: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', padding: 24 },
+card: { backgroundColor: '#fff', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: colors.border },
+  title: { fontSize: 28, fontWeight: '700', color: colors.primaryDark, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 6, marginBottom: 28 },
   field: { marginBottom: 18 },
-  label: { fontSize: 13, fontWeight: '600', color: '#1A1A2E', marginBottom: 8 },
-  input: { backgroundColor: '#EEF4F5', borderRadius: 12, borderWidth: 1, borderColor: '#E0E8EA', paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: '#1A1A2E' },
-  phoneRow: { flexDirection: 'row', backgroundColor: '#EEF4F5', borderRadius: 12, borderWidth: 1, borderColor: '#E0E8EA', overflow: 'hidden' },
-  phonePrefix: { paddingHorizontal: 14, paddingVertical: 14, backgroundColor: '#E0E8EA', justifyContent: 'center' },
-  phonePrefixText: { fontSize: 16, fontWeight: '600', color: '#0D7377' },
-  phoneInput: { flex: 1, paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: '#1A1A2E', letterSpacing: 0.5 },
-  errorText: { color: '#E63946', fontSize: 13, lineHeight: 18, marginBottom: 16 },
-  loginButton: { backgroundColor: '#0D9DA8', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  label: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 },
+  input: { backgroundColor: colors.bg, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: colors.textPrimary },
+  phoneRow: { flexDirection: 'row', backgroundColor: colors.bg, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  phonePrefix: { paddingHorizontal: 14, paddingVertical: 14, backgroundColor: colors.border, justifyContent: 'center' },
+  phonePrefixText: { fontSize: 16, fontWeight: '600', color: colors.primaryDark },
+  phoneInput: { flex: 1, paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: colors.textPrimary, letterSpacing: 0.5 },
+  errorText: { color: colors.danger, fontSize: 13, lineHeight: 18, marginBottom: 16 },
+  loginButton: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   loginButtonDisabled: { opacity: 0.5 },
   loginButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Vibration } from 'react-native';
 import Spinner from '../../../components/Spinner';
-import { formatStars } from '../../../lib/theme';
+import { colors,  formatStars } from '../../../lib/theme';
+import { Resort } from '../../../lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { getSession } from '../../../lib/authRouting';
@@ -22,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function Summary() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const [resort, setResort] = useState<any>(null);
+    const [resort, setResort] = useState<Resort | null>(null);
     const [items, setItems] = useState<ChecklistItem[]>([]);
     const [responses, setResponses] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
@@ -114,7 +115,7 @@ export default function Summary() {
     const stars = getStars(total);
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#EEF4F5' }}>
+        <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
                 <View style={styles.resortHeader}>
                     <Text style={styles.resortName}>{resort.serial_no}. {resort.name}</Text>
@@ -147,11 +148,11 @@ export default function Summary() {
                                     <View key={item.id} style={[styles.itemRow, !answered && styles.itemRowUnanswered]}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.itemLabel}>{item.id.toUpperCase()}. {item.label}</Text>
-                                            <Text style={[styles.itemAnswer, !answered && { color: '#E63946' }]}>
+                                            <Text style={[styles.itemAnswer, !answered && { color: colors.danger }]}>
                                                 {getAnswerText(item, r)}
                                             </Text>
                                         </View>
-                                        <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: '#E63946' }]}>
+                                        <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: colors.danger }]}>
                                             {r?.marks ?? 0}
                                         </Text>
                                     </View>
@@ -179,27 +180,27 @@ export default function Summary() {
 }
 
 const styles = StyleSheet.create({
-    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EEF4F5' },
-    errorText: { color: '#8A9BAE', fontSize: 16 },
-    resortHeader: { backgroundColor: '#0D7377', padding: 16 },
+    errorScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+    errorText: { color: colors.textMuted, fontSize: 16 },
+    resortHeader: { backgroundColor: colors.primaryDark, padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
     resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
-    scoreCard: { backgroundColor: '#fff', margin: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: '#E0E8EA' },
-    scoreLabel: { fontSize: 13, color: '#8A9BAE' },
+    scoreCard: { backgroundColor: '#fff', margin: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+    scoreLabel: { fontSize: 13, color: colors.textMuted },
     scoreValue: { fontSize: 36, fontWeight: '700', marginTop: 4 },
-    starsText: { fontSize: 24, color: '#F4A423', marginTop: 8 },
+    starsText: { fontSize: 24, color: colors.warning, marginTop: 8 },
     performanceLabel: { fontSize: 16, fontWeight: '600', marginTop: 4 },
-    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#D5EFEF', padding: 12, marginTop: 8 },
-    catTitle: { fontSize: 14, fontWeight: '700', color: '#0D7377', flex: 1 },
-    catScore: { fontSize: 16, fontWeight: '700', color: '#0D7377' },
-    itemRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 1, padding: 12, borderLeftWidth: 3, borderLeftColor: '#2ECC71' },
-    itemRowUnanswered: { borderLeftColor: '#E63946' },
-    itemLabel: { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
-    itemAnswer: { fontSize: 12, color: '#8A9BAE', marginTop: 2 },
-    itemMarks: { fontSize: 16, fontWeight: '700', color: '#0D7377', marginLeft: 12, minWidth: 30, textAlign: 'right' },
-    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', padding: 16, borderTopWidth: 1, borderColor: '#E0E8EA', elevation: 8, gap: 12 },
-    editBtn: { flex: 1, padding: 14, borderRadius: 20, borderWidth: 1.5, borderColor: '#0D9DA8', alignItems: 'center' },
-    editBtnText: { color: '#0D9DA8', fontSize: 15, fontWeight: '600' },
-    submitBtn: { flex: 1, padding: 14, borderRadius: 20, backgroundColor: '#0D9DA8', alignItems: 'center' },
+    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.primaryLight, padding: 12, marginTop: 8 },
+    catTitle: { fontSize: 14, fontWeight: '700', color: colors.primaryDark, flex: 1 },
+    catScore: { fontSize: 16, fontWeight: '700', color: colors.primaryDark },
+    itemRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 12, marginBottom: 1, padding: 12, borderLeftWidth: 3, borderLeftColor: colors.success },
+    itemRowUnanswered: { borderLeftColor: colors.danger },
+    itemLabel: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    itemAnswer: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    itemMarks: { fontSize: 16, fontWeight: '700', color: colors.primaryDark, marginLeft: 12, minWidth: 30, textAlign: 'right' },
+    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', flexDirection: 'row', padding: 16, borderTopWidth: 1, borderColor: colors.border, elevation: 8, gap: 12 },
+    editBtn: { flex: 1, padding: 14, borderRadius: 20, borderWidth: 1.5, borderColor: colors.primary, alignItems: 'center' },
+    editBtnText: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+    submitBtn: { flex: 1, padding: 14, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center' },
     submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });
