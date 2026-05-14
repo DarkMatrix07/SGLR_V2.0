@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     errorText: { color: colors.textMuted, fontSize: 16 },
     resortHeader: { backgroundColor: colors.primaryDark, padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
-    resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
+    resortArea: { fontSize: 13, color: colors.headerSubtext, marginTop: 2 },
     scoreCard: { backgroundColor: '#fff', margin: 12, borderRadius: 12, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     scoreLabel: { fontSize: 13, color: colors.textMuted },
     scoreValue: { fontSize: 36, fontWeight: '700', marginTop: 4 },

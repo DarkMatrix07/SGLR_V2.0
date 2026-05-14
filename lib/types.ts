@@ -1,3 +1,12 @@
+// Discriminated union for checklist responses, keyed by input_type
+export type NegativeKey = 'single_pit' | 'septic_tank' | 'offsite_stp' | 'onsite_stp';
+
+export type YesNoResponse = { answer: 'yes' | 'no' | 'manual'; marks: number };
+export type SingleSelectResponse = { selected: number; marks: number };
+export type NegativeSelectResponse = { selected: NegativeKey; subScore?: number; marks: number };
+export type NumericalResponse = { score: number; marks: number };
+export type ChecklistResponse = YesNoResponse | SingleSelectResponse | NegativeSelectResponse | NumericalResponse;
+
 export type Resort = {
     id: string;
     serial_no: number;
@@ -15,7 +24,7 @@ export type Inspection = {
     id: string;
     resort_id: string;
     officer_id: string | null;
-    responses: Record<string, any>;
+    responses: Record<string, ChecklistResponse>;
     total_score: number;
     stars: number;
     status: InspectionStatus;

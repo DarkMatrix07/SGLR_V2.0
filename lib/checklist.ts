@@ -12,6 +12,10 @@ export type ChecklistItem = {
     sort_order?: number;
 };
 
+// Kept as Record<string, any> because each item maps to one of several response shapes
+// (yes_no / single_select / negative_select / numerical). See ChecklistResponse in lib/types.ts
+// for the typed union — applied at boundaries (Inspection.responses) but treated loosely here
+// to avoid narrowing every helper by input_type.
 export type Responses = Record<string, any>;
 
 export const CATEGORY_LABELS_FULL: Record<string, string> = {

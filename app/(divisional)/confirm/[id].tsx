@@ -67,7 +67,7 @@ export default function Confirmation() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', padding: 24 },
     card: { backgroundColor: '#fff', borderRadius: 16, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
-    checkCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#2ECC7120', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+    checkCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.successTint, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
     checkMark: { fontSize: 36, color: colors.success },
     title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
     subtitle: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },

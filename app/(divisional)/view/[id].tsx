@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     errorText: { color: colors.textMuted, fontSize: 16 },
     resortHeader: { backgroundColor: colors.primaryDark, padding: 16 },
     resortName: { fontSize: 18, fontWeight: '700', color: '#fff' },
-    resortArea: { fontSize: 13, color: '#ffffffbb', marginTop: 2 },
+    resortArea: { fontSize: 13, color: colors.headerSubtext, marginTop: 2 },
     statusBar: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
     statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
     statusText: { fontSize: 13, fontWeight: '700' },

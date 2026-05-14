@@ -14,6 +14,13 @@ export const colors = {
     orange: '#FF6B35',
     star: '#F4A423',
     rejectBg: '#FFF4F4',
+    // semi-transparent variants
+    headerSubtext: '#ffffffbb',
+    primaryTint: '#0D9DA815',
+    primaryTintLight: '#E1F5EE',
+    successTint: '#2ECC7120',
+    successTintLight: '#2ECC7115',
+    dangerTintLight: '#E6394615',
 };
 
 export function formatStars(stars: number): string {
