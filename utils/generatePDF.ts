@@ -59,9 +59,7 @@ const commonStyles = `
 
 // ============ PRE-INSPECTION (BLANK) ============
 
-function buildPreInspectionItem(item: ChecklistItem): string {
-  if (item.visibility_condition) return '';
-
+function buildPreInspectionItem(item: ChecklistItem, isConditional = false): string {
   let inputHtml = '';
 
   if (item.input_type === 'yes_no') {
@@ -106,16 +104,32 @@ function buildPreInspectionItem(item: ChecklistItem): string {
     inputHtml = `<div style="margin-top:4px;color:#555;">Score: ____/${item.max_marks}</div>`;
   }
 
+  const conditionalNote = isConditional && item.visibility_condition
+    ? `<div style="font-size:10px;color:#0D7377;font-style:italic;margin-bottom:2px;">↳ Fill only if parent question answered "${item.visibility_condition.showWhen ?? ''}"</div>`
+    : '';
+
   return `
-    <div class="item">
+    <div class="item" ${isConditional ? 'style="margin-left:16px;border-left:2px solid #0D9DA8;padding-left:10px;"' : ''}>
       <div class="item-label"><span class="item-id">${escapeHtml(item.id.toUpperCase())}</span>${escapeHtml(item.label)}</div>
       ${item.description ? `<div style="font-size:11px;color:#8A9BAE;margin-bottom:2px;">${escapeHtml(item.description)}</div>` : ''}
+      ${conditionalNote}
       ${inputHtml}
     </div>`;
 }
 
 export async function generatePreInspectionPDF(resort: Resort, items: ChecklistItem[]) {
   const categories = ['A', 'B', 'C'];
+
+  // Group conditional items under their parent so the paper checklist mirrors the screen flow
+  const conditionalChildren = new Map<string, ChecklistItem[]>();
+  items.forEach(i => {
+    const parent = i.visibility_condition?.dependsOn;
+    if (parent) {
+      if (!conditionalChildren.has(parent)) conditionalChildren.set(parent, []);
+      conditionalChildren.get(parent)!.push(i);
+    }
+  });
+
   const mainItems = items.filter(i => !i.visibility_condition);
 
   let body = '';
@@ -125,6 +139,9 @@ export async function generatePreInspectionPDF(resort: Resort, items: ChecklistI
     body += `<div class="cat-header">${CATEGORY_LABELS[cat]}</div>`;
     catItems.forEach(item => {
       body += buildPreInspectionItem(item);
+      (conditionalChildren.get(item.id) ?? []).forEach(child => {
+        body += buildPreInspectionItem(child, true);
+      });
     });
   });
 
@@ -215,21 +232,17 @@ export async function generatePostInspectionPDF(
       const marks = r?.marks ?? 0;
       const marksColor = marks < 0 ? '#E63946' : '#1A1A2E';
       const answered = !!r;
-
-      let answerText = getAnswerText(item, r);
-
-      // Add desludging info if septic tank
-      if (item.id === '3' && r?.selected === 'septic_tank') {
-        const desludge = responses['3_desludge'];
-        if (desludge) {
-          answerText += `<br/><span style="font-size:11px;color:#0D7377;">Desludging: ${desludge.answer === 'yes' ? 'Yes (+10)' : 'No (0)'}</span>`;
-        }
-      }
+      const isConditional = !!item.visibility_condition;
+      const answerText = getAnswerText(item, r);
+      const labelCell = isConditional
+        ? `<span style="color:#0D7377;">↳ </span>${escapeHtml(item.label)}`
+        : escapeHtml(item.label);
+      const rowBg = isConditional ? 'background:#F7FBFB;' : '';
 
       tableRows += `
-        <tr style="border-bottom:1px solid #E0E8EA;">
+        <tr style="border-bottom:1px solid #E0E8EA;${rowBg}">
           <td style="padding:6px 8px;color:#0D9DA8;font-weight:600;width:50px;">${escapeHtml(item.id.toUpperCase())}</td>
-          <td style="padding:6px 8px;">${escapeHtml(item.label)}</td>
+          <td style="padding:6px 8px;">${labelCell}</td>
           <td style="padding:6px 8px;color:${answered ? '#1A1A2E' : '#E63946'};">${answerText}</td>
           <td style="padding:6px 8px;text-align:right;font-weight:600;color:${marksColor};">${marks}</td>
         </tr>`;
@@ -248,7 +261,7 @@ export async function generatePostInspectionPDF(
     <div class="resort-name">${resort.serial_no}. ${escapeHtml(resort.name)}</div>
 
     <div style="margin-bottom:12px;font-size:12px;">
-      <div class="info-row"><span class="info-label">Area:</span> ${escapeHtml(resort.area)}</div>
+      <div class="info-row"><span class="info-label">Area:</span> ${escapeHtml(resort.area) || 'N/A'}</div>
       <div class="info-row"><span class="info-label">Owner:</span> ${escapeHtml(resort.owner_name) || 'N/A'}</div>
       <div class="info-row"><span class="info-label">Phone:</span> ${escapeHtml(resort.owner_phone) || 'N/A'}</div>
       <div class="info-row"><span class="info-label">Rooms:</span> ${resort.room_count ?? 'N/A'}</div>

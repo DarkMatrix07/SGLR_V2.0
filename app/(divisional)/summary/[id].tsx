@@ -2,33 +2,20 @@ import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
+import { getSession } from '../../../lib/authRouting';
+import {
+    CATEGORIES,
+    CATEGORY_LABELS,
+    ChecklistItem,
+    getAnswerText,
+    getCategoryScore,
+    getScoreColor,
+    getStarLabel,
+    getStars,
+    getTotalScore,
+    isVisible,
+} from '../../../lib/checklist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BackHandler } from 'react-native';
-
-type ChecklistItem = {
-    id: string;
-    category: string;
-    subcategory: string;
-    label: string;
-    input_type: string;
-    max_marks: number;
-    options: any[] | null;
-    visibility_condition: any | null;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-    A: 'A. Faecal Sludge Management',
-    B: 'B. Solid Waste Management',
-    C: 'C. Grey Water Management',
-};
-
-const NEGATIVE_KEYS = ['single_pit', 'septic_tank', 'offsite_stp', 'onsite_stp'];
-const NEGATIVE_LABELS: Record<string, string> = {
-    single_pit: 'Single-pit toilet',
-    septic_tank: 'Septic tank',
-    offsite_stp: 'Off-site STP via sewer',
-    onsite_stp: 'On-site decentralised STP',
-};
 
 export default function Summary() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,13 +27,6 @@ export default function Summary() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => { loadData(); }, []);
-    useEffect(() => {
-        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            router.replace('/(divisional)');
-            return true;
-        });
-        return () => backHandler.remove();
-    }, []);
 
     async function loadData() {
         const [resortRes, itemsRes, draft] = await Promise.all([
@@ -58,7 +38,8 @@ export default function Summary() {
         if (itemsRes.data) setItems(itemsRes.data);
         if (draft) {
             try {
-                setResponses(JSON.parse(draft));
+                const parsed = JSON.parse(draft);
+                setResponses(parsed.responses ?? parsed ?? {});
             } catch {
                 await AsyncStorage.removeItem(`draft_${id}`);
             }
@@ -66,78 +47,39 @@ export default function Summary() {
         setLoading(false);
     }
 
-    function getAnswerText(item: ChecklistItem) {
-        const r = responses[item.id];
-        if (!r) return 'Not answered';
-        if (item.input_type === 'yes_no') {
-            if (r.answer === 'yes') return `Yes (${r.marks})`;
-            if (r.answer === 'no') return `No (0)`;
-            if (r.answer === 'manual') return `Manual: ${r.marks}`;
-        }
-        if (item.input_type === 'single_select') {
-            const opt = item.options?.[r.selected];
-            return opt ? `${opt.label} (${r.marks})` : 'Not answered';
-        }
-        if (item.input_type === 'negative_select') {
-            const label = NEGATIVE_LABELS[r.selected] || r.selected;
-            if (r.selected === 'septic_tank') return `${label} (${r.marks})`;
-            return `${label} (${r.marks})`;
-        }
-        if (item.input_type === 'numerical') {
-            return `${r.score} / ${item.max_marks}`;
-        }
-        return 'Not answered';
-    }
-
-    function isVisible(item: ChecklistItem) {
-        if (!item.visibility_condition) return true;
-        const { dependsOn, showWhen } = item.visibility_condition;
-        const parent = responses[dependsOn];
-        if (!parent) return false;
-        return parent.selected === showWhen;
-    }
-
-    function getCategoryScore(cat: string) {
-        return items
-            .filter(i => i.category === cat && isVisible(i))
-            .reduce((sum, i) => sum + (responses[i.id]?.marks || 0), 0);
-    }
-
-    function getTotalScore() {
-        return Object.values(responses).reduce((sum: number, r: any) => sum + (r.marks || 0), 0);
-    }
-
-    function getStars(score: number) {
-        if (score >= 170) return 5;
-        if (score >= 130) return 4;
-        if (score >= 90) return 3;
-        if (score >= 50) return 2;
-        return 1;
-    }
-
-    function getScoreColor(score: number) {
-        if (score >= 130) return '#2ECC71';
-        if (score >= 90) return '#F4A423';
-        if (score >= 50) return '#FF6B35';
-        return '#E63946';
-    }
-
     async function handleSubmit() {
-        const total = getTotalScore();
+        const total = getTotalScore(items, responses);
         const stars = getStars(total);
 
+        const visibleItems = items.filter(i => isVisible(i, responses));
+        const unanswered = visibleItems.filter(i => !responses[i.id]).length;
+
+        const title = unanswered > 0 ? 'Incomplete Inspection' : 'Submit Inspection';
+        const message = unanswered > 0
+            ? `${unanswered} of ${visibleItems.length} questions are unanswered.\n\nTotal: ${total}/200 (${stars} stars)\n\nSubmit anyway?`
+            : `Total: ${total}/200 (${stars} stars)\n\nAre you sure you want to submit?`;
+
         Alert.alert(
-            'Submit Inspection',
-            `Total: ${total}/200 (${stars} stars)\n\nAre you sure you want to submit?`,
+            title,
+            message,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Submit',
+                    text: unanswered > 0 ? 'Submit Anyway' : 'Submit',
                     onPress: async () => {
                         setSubmitting(true);
+
+                        const session = await getSession();
+                        if (!session) {
+                            Alert.alert('Session Expired', 'Please log in again.');
+                            setSubmitting(false);
+                            router.replace('/login');
+                            return;
+                        }
+
                         const { error } = await supabase.from('inspections').insert({
                             resort_id: id,
-                            officer_id: '00000000-0000-0000-0000-000000000000',
+                            officer_id: session.officerId,
                             responses,
                             total_score: total,
                             stars,
@@ -150,7 +92,9 @@ export default function Summary() {
                             setSubmitting(false);
                         } else {
                             await AsyncStorage.removeItem(`draft_${id}`);
-                            router.replace(`/(divisional)/confirm/${id}`);
+                            // Pop inspect + summary off the stack, then go to confirm
+                            if (router.canDismiss()) router.dismissAll();
+                            router.push(`/(divisional)/confirm/${id}`);
                         }
                     },
                 },
@@ -165,9 +109,8 @@ export default function Summary() {
         return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
     }
 
-    const total = getTotalScore();
+    const total = getTotalScore(items, responses);
     const stars = getStars(total);
-    const categories = ['A', 'B', 'C'];
 
     return (
         <View style={{ flex: 1, backgroundColor: '#EEF4F5' }}>
@@ -182,14 +125,14 @@ export default function Summary() {
                     <Text style={[styles.scoreValue, { color: getScoreColor(total) }]}>{total} / 200</Text>
                     <Text style={styles.starsText}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</Text>
                     <Text style={[styles.performanceLabel, { color: getScoreColor(total) }]}>
-                        {stars === 5 ? 'Excellent' : stars === 4 ? 'Good' : stars === 3 ? 'Average' : stars === 2 ? 'Below Average' : 'Poor'}
+                        {getStarLabel(stars)}
                     </Text>
                 </View>
 
-                {categories.map(cat => {
-                    const catItems = items.filter(i => i.category === cat && isVisible(i));
+                {CATEGORIES.map(cat => {
+                    const catItems = items.filter(i => i.category === cat && isVisible(i, responses));
                     if (catItems.length === 0) return null;
-                    const catScore = getCategoryScore(cat);
+                    const catScore = getCategoryScore(items, responses, cat);
                     return (
                         <View key={cat}>
                             <View style={styles.catHeader}>
@@ -204,7 +147,7 @@ export default function Summary() {
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.itemLabel}>{item.id.toUpperCase()}. {item.label}</Text>
                                             <Text style={[styles.itemAnswer, !answered && { color: '#E63946' }]}>
-                                                {getAnswerText(item)}
+                                                {getAnswerText(item, r)}
                                             </Text>
                                         </View>
                                         <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: '#E63946' }]}>

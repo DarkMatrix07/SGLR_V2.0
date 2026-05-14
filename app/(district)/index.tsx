@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
 type InspectionWithResort = {
@@ -17,14 +17,22 @@ type InspectionWithResort = {
     };
 };
 
+type TabKey = 'pending' | 'approved' | 'rejected';
+const TABS: { key: TabKey; label: string }[] = [
+    { key: 'pending', label: 'Pending' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'rejected', label: 'Rejected' },
+];
+
 export default function DistrictReview() {
     const [inspections, setInspections] = useState<InspectionWithResort[]>([]);
-    const [tab, setTab] = useState<'pending' | 'approved'>('pending');
+    const [tab, setTab] = useState<TabKey>('pending');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const router = useRouter();
 
-    useEffect(() => { fetchData(); }, []);
+    useFocusEffect(useCallback(() => { fetchData(); }, []));
 
     async function fetchData() {
         const { data } = await supabase
@@ -33,6 +41,12 @@ export default function DistrictReview() {
             .order('created_at', { ascending: false });
         if (data) setInspections(data as any);
         setLoading(false);
+        setRefreshing(false);
+    }
+
+    async function onRefresh() {
+        setRefreshing(true);
+        await fetchData();
     }
 
     function getStarLabel(stars: number) {
@@ -65,22 +79,21 @@ export default function DistrictReview() {
     return (
         <View style={styles.container}>
             <View style={styles.tabRow}>
-                <TouchableOpacity
-                    style={[styles.tab, tab === 'pending' && styles.tabActive]}
-                    onPress={() => setTab('pending')}
-                >
-                    <Text style={[styles.tabText, tab === 'pending' && styles.tabTextActive]}>
-                        Pending ({inspections.filter(i => i.status === 'pending').length})
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, tab === 'approved' && styles.tabActive]}
-                    onPress={() => setTab('approved')}
-                >
-                    <Text style={[styles.tabText, tab === 'approved' && styles.tabTextActive]}>
-                        Approved ({inspections.filter(i => i.status === 'approved').length})
-                    </Text>
-                </TouchableOpacity>
+                {TABS.map(t => {
+                    const count = inspections.reduce((n, i) => n + (i.status === t.key ? 1 : 0), 0);
+                    const active = tab === t.key;
+                    return (
+                        <TouchableOpacity
+                            key={t.key}
+                            style={[styles.tab, active && styles.tabActive]}
+                            onPress={() => setTab(t.key)}
+                        >
+                            <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                                {t.label} ({count})
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             <TextInput
@@ -95,6 +108,7 @@ export default function DistrictReview() {
                 data={filtered}
                 keyExtractor={i => i.id}
                 contentContainerStyle={{ paddingBottom: 20 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9DA8']} tintColor="#0D9DA8" />}
                 ListEmptyComponent={<Text style={styles.empty}>No {tab} inspections</Text>}
                 renderItem={({ item }) => (
                     <TouchableOpacity

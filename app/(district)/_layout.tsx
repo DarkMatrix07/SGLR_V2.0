@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { getRouteForRole, resolveAppRole } from '../../lib/authRouting';
-import { supabase } from '../../lib/supabase';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Stack, router as globalRouter, useRouter } from 'expo-router';
+import { getRouteForRole, getSession, signOut } from '../../lib/authRouting';
 
 export default function DistrictLayout() {
     const router = useRouter();
@@ -10,29 +9,19 @@ export default function DistrictLayout() {
 
     useEffect(() => {
         let active = true;
-
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
+        getSession().then((session) => {
             if (!active) return;
-
             if (!session) {
-                router.replace('/');
+                router.replace('/login');
                 return;
             }
-
-            const role = await resolveAppRole(session);
-            if (!active) return;
-
-            if (role !== 'district') {
-                router.replace(role ? getRouteForRole(role) : '/');
+            if (session.role !== 'district') {
+                router.replace(getRouteForRole(session.role) as never);
                 return;
             }
-
             setAllowed(true);
         });
-
-        return () => {
-            active = false;
-        };
+        return () => { active = false; };
     }, [router]);
 
     if (!allowed) {
@@ -52,7 +41,24 @@ export default function DistrictLayout() {
                 animation: 'slide_from_right',
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'District Review' }} />
+            <Stack.Screen
+                name="index"
+                options={{
+                    title: 'District Review',
+                    headerRight: () => (
+                        <Pressable
+                            onPress={async () => {
+                                await signOut();
+                                globalRouter.replace('/login');
+                            }}
+                            hitSlop={12}
+                            style={({ pressed }) => ({ paddingHorizontal: 12, paddingVertical: 6, opacity: pressed ? 0.6 : 1 })}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: '600' }}>Logout</Text>
+                        </Pressable>
+                    ),
+                }}
+            />
             <Stack.Screen name="detail/[id]" options={{ title: 'Inspection Details' }} />
         </Stack>
     );

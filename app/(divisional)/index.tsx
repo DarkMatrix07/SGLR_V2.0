@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, Alert, BackHandler } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
 type Resort = {
@@ -26,17 +26,10 @@ export default function ResortList() {
     const [inspections, setInspections] = useState<Inspection[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const router = useRouter();
 
-    useEffect(() => { fetchData(); }, []);
-
-    useEffect(() => {
-        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            router.replace('/');
-            return true;
-        });
-        return () => backHandler.remove();
-    }, []);
+    useFocusEffect(useCallback(() => { fetchData(); }, []));
 
     async function fetchData() {
         const [resortRes, inspRes] = await Promise.all([
@@ -46,6 +39,12 @@ export default function ResortList() {
         if (resortRes.data) setResorts(resortRes.data);
         if (inspRes.data) setInspections(inspRes.data);
         setLoading(false);
+        setRefreshing(false);
+    }
+
+    async function onRefresh() {
+        setRefreshing(true);
+        await fetchData();
     }
 
     function getLatestInspection(resortId: string) {
@@ -67,9 +66,9 @@ export default function ResortList() {
     function handlePress(resort: Resort) {
         const inspection = getLatestInspection(resort.id);
         if (!inspection || inspection.status === 'rejected') {
-            router.replace(`/(divisional)/inspect/${resort.id}`);
+            router.push(`/(divisional)/inspect/${resort.id}`);
         } else {
-            router.replace(`/(divisional)/view/${resort.id}`);
+            router.push(`/(divisional)/view/${resort.id}`);
         }
     }
 
@@ -100,6 +99,7 @@ export default function ResortList() {
                 data={filtered}
                 keyExtractor={r => r.id}
                 contentContainerStyle={{ paddingBottom: 20 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9DA8']} tintColor="#0D9DA8" />}
                 renderItem={({ item: resort }) => {
                     const inspection = getLatestInspection(resort.id);
                     return (

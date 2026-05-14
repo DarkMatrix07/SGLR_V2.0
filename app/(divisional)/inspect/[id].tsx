@@ -1,26 +1,20 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { supabase } from '../../../lib/supabase';
 import { generatePreInspectionPDF } from '../../../utils/generatePDF';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BackHandler } from 'react-native';
-
-type ChecklistItem = {
-    id: string;
-    category: string;
-    subcategory: string;
-    label: string;
-    description: string | null;
-    input_type: string;
-    min_marks: number;
-    max_marks: number;
-    options: any[] | null;
-    visibility_condition: any | null;
-    sort_order: number;
-};
+import {
+    CATEGORIES,
+    CATEGORY_LABELS_FULL,
+    ChecklistItem,
+    NEGATIVE_KEYS,
+    Responses,
+    SUBCATEGORIES,
+    SUB_LABELS,
+    getTotalScore,
+    isVisible,
+} from '../../../lib/checklist';
 
 type Resort = {
     id: string;
@@ -30,21 +24,6 @@ type Resort = {
     owner_name: string | null;
     owner_phone: string | null;
     room_count: number | null;
-};
-
-type Responses = Record<string, any>;
-
-const CATEGORY_LABELS: Record<string, string> = {
-    A: 'A. Faecal Sludge Management (80 Marks)',
-    B: 'B. Solid Waste Management (80 Marks)',
-    C: 'C. Grey Water Management (40 Marks)',
-};
-
-const SUB_LABELS: Record<string, string> = {
-    infrastructure: 'Infrastructure',
-    practices: 'Practices',
-    awareness: 'Awareness Generation',
-    innovations: 'Innovations',
 };
 
 export default function InspectionForm() {
@@ -66,13 +45,19 @@ export default function InspectionForm() {
             if (resortRes.data) setResort(resortRes.data);
             if (itemsRes.data) setItems(itemsRes.data);
 
-            // Check for existing draft
+            // Check for existing draft.
+            // If saved within the last 60s we treat this as a return-from-Summary and silently restore.
             const draft = await AsyncStorage.getItem(`draft_${id}`);
             if (draft) {
                 try {
                     const parsed = JSON.parse(draft);
-                    setDraftTimestamp(parsed.savedAt || null);
-                    setShowDraftModal(true);
+                    const ageMs = parsed.savedAt ? Date.now() - new Date(parsed.savedAt).getTime() : Infinity;
+                    if (ageMs < 60_000 && parsed.responses) {
+                        setResponses(parsed.responses);
+                    } else {
+                        setDraftTimestamp(parsed.savedAt || null);
+                        setShowDraftModal(true);
+                    }
                 } catch {
                     await AsyncStorage.removeItem(`draft_${id}`);
                 }
@@ -91,18 +76,6 @@ export default function InspectionForm() {
             AsyncStorage.setItem(`draft_${id}`, draftData);
         }
     }, [responses]);
-
-    function getTotalScore() {
-        return Object.values(responses).reduce((sum: number, r: any) => sum + (r.marks || 0), 0);
-    }
-
-    function isVisible(item: ChecklistItem) {
-        if (!item.visibility_condition) return true;
-        const { dependsOn, showWhen } = item.visibility_condition;
-        const parent = responses[dependsOn];
-        if (!parent) return false;
-        return parent.selected === showWhen;
-    }
 
     function setResponse(itemId: string, data: any) {
         setResponses(prev => ({ ...prev, [itemId]: data }));
@@ -196,38 +169,28 @@ export default function InspectionForm() {
 
     function renderNegativeSelect(item: ChecklistItem) {
         const current = responses[item.id];
-        const keys = ['single_pit', 'septic_tank', 'offsite_stp', 'onsite_stp'];
         return (
             <View>
                 {item.options?.map((opt, idx) => {
-                    const key = keys[idx];
+                    const key = NEGATIVE_KEYS[idx];
                     const isSelected = current?.selected === key;
                     return (
                         <View key={idx}>
                             <TouchableOpacity
                                 style={[styles.radioRow, isSelected && styles.radioRowActive]}
                                 onPress={() => {
-                                    if (key === 'single_pit') {
-                                        setResponse(item.id, { selected: key, marks: -8 });
-                                        setResponses(prev => {
-                                            const n = { ...prev };
-                                            delete n['3_sub'];
-                                            delete n['3_desludge'];
-                                            return { ...n, [item.id]: { selected: key, marks: -8 } };
-                                        });
-                                    } else if (key === 'septic_tank') {
-                                        setResponses(prev => {
-                                            const n = { ...prev };
-                                            return { ...n, [item.id]: { selected: key, subScore: 0, marks: 0 } };
-                                        });
-                                    } else {
-                                        setResponses(prev => {
-                                            const n = { ...prev };
-                                            delete n['3_sub'];
-                                            delete n['3_desludge'];
-                                            return { ...n, [item.id]: { selected: key, subScore: 0, marks: 0 } };
-                                        });
-                                    }
+                                    setResponses(prev => {
+                                        const n = { ...prev };
+                                        // Any change to the parent invalidates conditional children
+                                        delete n['3_sub'];
+                                        delete n['3_desludge'];
+                                        if (key === 'single_pit') {
+                                            n[item.id] = { selected: key, marks: -8 };
+                                        } else {
+                                            n[item.id] = { selected: key, subScore: 0, marks: 0 };
+                                        }
+                                        return n;
+                                    });
                                 }}
                             >
                                 <View style={[styles.radio, isSelected && styles.radioActive]}>
@@ -292,7 +255,7 @@ export default function InspectionForm() {
     }
 
     function renderItem(item: ChecklistItem) {
-        if (!isVisible(item)) return null;
+        if (!isVisible(item, responses)) return null;
         return (
             <View key={item.id} style={[styles.itemCard, item.visibility_condition && styles.conditionalCard]}>
                 <View style={styles.itemHeader}>
@@ -309,8 +272,11 @@ export default function InspectionForm() {
     }
 
     async function handleReview() {
-        await AsyncStorage.setItem(`draft_${id}`, JSON.stringify(responses));
-        router.replace(`/(divisional)/summary/${id}`);
+        await AsyncStorage.setItem(
+            `draft_${id}`,
+            JSON.stringify({ responses, savedAt: new Date().toISOString() })
+        );
+        router.push(`/(divisional)/summary/${id}`);
     }
 
 
@@ -322,9 +288,7 @@ export default function InspectionForm() {
         return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>Failed to load resort data</Text></View>;
     }
 
-    const categories = ['A', 'B', 'C'];
-    const subcategories = ['infrastructure', 'practices', 'awareness', 'innovations'];
-    const totalScore = getTotalScore();
+    const totalScore = getTotalScore(items, responses);
 
     return (
         <View style={{ flex: 1, backgroundColor: '#EEF4F5' }}>
@@ -360,13 +324,13 @@ export default function InspectionForm() {
                     </TouchableOpacity>
                 </View>
 
-                {categories.map(cat => {
+                {CATEGORIES.map(cat => {
                     const catItems = items.filter(i => i.category === cat);
                     if (catItems.length === 0) return null;
                     return (
                         <View key={cat}>
-                            <Text style={styles.categoryHeader}>{CATEGORY_LABELS[cat]}</Text>
-                            {subcategories.map(sub => {
+                            <Text style={styles.categoryHeader}>{CATEGORY_LABELS_FULL[cat]}</Text>
+                            {SUBCATEGORIES.map(sub => {
                                 const subItems = catItems.filter(i => i.subcategory === sub);
                                 if (subItems.length === 0) return null;
                                 return (

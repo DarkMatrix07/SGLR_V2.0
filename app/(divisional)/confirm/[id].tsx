@@ -8,11 +8,12 @@ export default function Confirmation() {
 
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            router.replace('/(divisional)');
+            if (router.canGoBack()) router.back();
+            else router.replace('/(divisional)');
             return true;
         });
         return () => backHandler.remove();
-    }, []);
+    }, [router]);
 
     return (
         <View style={styles.container}>
@@ -22,7 +23,7 @@ export default function Confirmation() {
                 </View>
                 <Text style={styles.title}>Inspection Submitted</Text>
                 <Text style={styles.subtitle}>Your inspection has been submitted successfully and is now pending review by the District Committee.</Text>
-                <TouchableOpacity style={styles.button} onPress={() => router.replace('/(divisional)')}>
+                <TouchableOpacity style={styles.button} onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/(divisional)'); }}>
                     <Text style={styles.buttonText}>Back to Resorts</Text>
                 </TouchableOpacity>
             </View>

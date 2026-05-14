@@ -1,42 +1,71 @@
-import type { Session } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
 export type AppRole = 'divisional' | 'district';
 
-function normalizePhoneVariants(phone: string | null | undefined) {
-    if (!phone) return [];
+export type AppSession = {
+    officerId: string;
+    phone: string;
+    name: string | null;
+    role: AppRole;
+};
 
-    const digits = phone.replace(/\D/g, '');
+const SESSION_KEY = 'sglr_session_v1';
+
+function normalizePhone(raw: string) {
+    const digits = raw.replace(/\D/g, '');
     const local = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
-
-    return Array.from(new Set([phone, local].filter(Boolean)));
+    return `+91${local.slice(0, 10)}`;
 }
 
-export async function resolveAppRole(session: Session): Promise<AppRole | null> {
-    const metadataRole = session.user.user_metadata?.app_role;
+export async function signIn(rawPhone: string, pin: string): Promise<AppSession> {
+    const phone = normalizePhone(rawPhone);
 
-    if (metadataRole === 'divisional' || metadataRole === 'district') {
-        return metadataRole;
+    if (!/^\+91\d{10}$/.test(phone)) {
+        throw new Error('Enter a valid Indian mobile number.');
     }
-
-    const phoneVariants = normalizePhoneVariants(session.user.phone);
-    if (phoneVariants.length === 0) return null;
+    if (!/^\d{4}$/.test(pin)) {
+        throw new Error('PIN must be exactly 4 digits.');
+    }
 
     const { data, error } = await supabase
         .from('officers')
-        .select('role, is_active')
-        .in('phone', phoneVariants)
+        .select('id, phone, name, role, pin, is_active')
+        .eq('phone', phone)
         .eq('is_active', true)
-        .limit(1)
         .maybeSingle();
 
-    if (error || !data) return null;
-
-    if (data.role === 'divisional' || data.role === 'district') {
-        return data.role;
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('This phone number is not approved for app access.');
+    if (data.pin !== pin) throw new Error('Incorrect PIN.');
+    if (data.role !== 'divisional' && data.role !== 'district') {
+        throw new Error('Your account has no role assigned.');
     }
 
-    return null;
+    const session: AppSession = {
+        officerId: data.id,
+        phone: data.phone,
+        name: data.name,
+        role: data.role,
+    };
+
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    return session;
+}
+
+export async function getSession(): Promise<AppSession | null> {
+    const raw = await AsyncStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw) as AppSession;
+    } catch {
+        await AsyncStorage.removeItem(SESSION_KEY);
+        return null;
+    }
+}
+
+export async function signOut(): Promise<void> {
+    await AsyncStorage.removeItem(SESSION_KEY);
 }
 
 export function getRouteForRole(role: AppRole) {

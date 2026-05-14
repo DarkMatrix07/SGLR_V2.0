@@ -1,34 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { generatePostInspectionPDF } from '../../../utils/generatePDF';
-
-type ChecklistItem = {
-    id: string;
-    category: string;
-    subcategory: string;
-    label: string;
-    description: string | null;
-    input_type: string;
-    min_marks: number;
-    max_marks: number;
-    options: any[] | null;
-    visibility_condition: any | null;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-    A: 'A. Faecal Sludge Management',
-    B: 'B. Solid Waste Management',
-    C: 'C. Grey Water Management',
-};
-
-const NEGATIVE_LABELS: Record<string, string> = {
-    single_pit: 'Single-pit toilet',
-    septic_tank: 'Septic tank',
-    offsite_stp: 'Off-site STP via sewer',
-    onsite_stp: 'On-site decentralised STP',
-};
+import {
+    CATEGORIES,
+    CATEGORY_LABELS,
+    ChecklistItem,
+    getAnswerText,
+    getStarLabel,
+    getStatusColor,
+    isVisible,
+} from '../../../lib/checklist';
 
 export default function ViewInspection() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,62 +20,18 @@ export default function ViewInspection() {
     const [items, setItems] = useState<ChecklistItem[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => { fetchData(); }, []);
+    useFocusEffect(useCallback(() => { fetchData(); }, [id]));
 
     async function fetchData() {
         const [resortRes, itemsRes, inspRes] = await Promise.all([
-            supabase.from('resorts').select('*').eq('id', id).single(),
+            supabase.from('resorts').select('*').eq('id', id).maybeSingle(),
             supabase.from('checklist_items').select('*').order('sort_order'),
-            supabase.from('inspections').select('*').eq('resort_id', id).order('created_at', { ascending: false }).limit(1).single(),
+            supabase.from('inspections').select('*').eq('resort_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         ]);
         if (resortRes.data) setResort(resortRes.data);
         if (itemsRes.data) setItems(itemsRes.data);
         if (inspRes.data) setInspection(inspRes.data);
         setLoading(false);
-    }
-
-    function getAnswerText(item: ChecklistItem) {
-        const r = inspection?.responses?.[item.id];
-        if (!r) return 'Not answered';
-        if (item.input_type === 'yes_no') {
-            if (r.answer === 'yes') return `Yes (${r.marks})`;
-            if (r.answer === 'no') return 'No (0)';
-            if (r.answer === 'manual') return `Manual: ${r.marks}`;
-        }
-        if (item.input_type === 'single_select') {
-            const opt = item.options?.[r.selected];
-            return opt ? `${opt.label} (${r.marks})` : 'Not answered';
-        }
-        if (item.input_type === 'negative_select') {
-            return `${NEGATIVE_LABELS[r.selected] || r.selected} (${r.marks})`;
-        }
-        if (item.input_type === 'numerical') {
-            return `${r.score} / ${item.max_marks}`;
-        }
-        return 'Not answered';
-    }
-
-    function isVisible(item: ChecklistItem) {
-        if (!item.visibility_condition) return true;
-        const { dependsOn, showWhen } = item.visibility_condition;
-        const parent = inspection?.responses?.[dependsOn];
-        if (!parent) return false;
-        return parent.selected === showWhen;
-    }
-
-    function getStatusColor(status: string) {
-        if (status === 'approved') return '#2ECC71';
-        if (status === 'pending') return '#F4A423';
-        if (status === 'rejected') return '#E63946';
-        return '#8A9BAE';
-    }
-
-    function getStarLabel(stars: number) {
-        if (stars === 5) return 'Excellent';
-        if (stars === 4) return 'Good';
-        if (stars === 3) return 'Average';
-        if (stars === 2) return 'Below Average';
-        return 'Poor';
     }
 
     if (loading) {
@@ -105,7 +44,7 @@ export default function ViewInspection() {
         return <View style={styles.center}><Text style={{ color: '#8A9BAE', fontSize: 16 }}>No inspection found</Text></View>;
     }
 
-    const categories = ['A', 'B', 'C'];
+    const responses = inspection.responses ?? {};
 
     return (
         <ScrollView style={{ flex: 1, backgroundColor: '#EEF4F5' }} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -131,10 +70,10 @@ export default function ViewInspection() {
                 <Text style={styles.performanceLabel}>{getStarLabel(inspection.stars)}</Text>
             </View>
 
-            {categories.map(cat => {
-                const catItems = items.filter(i => i.category === cat && isVisible(i));
+            {CATEGORIES.map(cat => {
+                const catItems = items.filter(i => i.category === cat && isVisible(i, responses));
                 if (catItems.length === 0) return null;
-                const catScore = catItems.reduce((sum, i) => sum + (inspection.responses?.[i.id]?.marks || 0), 0);
+                const catScore = catItems.reduce((sum, i) => sum + (responses[i.id]?.marks || 0), 0);
                 return (
                     <View key={cat}>
                         <View style={styles.catHeader}>
@@ -142,12 +81,12 @@ export default function ViewInspection() {
                             <Text style={styles.catScore}>{catScore}</Text>
                         </View>
                         {catItems.map(item => {
-                            const r = inspection.responses?.[item.id];
+                            const r = responses[item.id];
                             return (
                                 <View key={item.id} style={styles.itemRow}>
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.itemLabel}>{item.id.toUpperCase()}. {item.label}</Text>
-                                        <Text style={styles.itemAnswer}>{getAnswerText(item)}</Text>
+                                        <Text style={styles.itemAnswer}>{getAnswerText(item, r)}</Text>
                                     </View>
                                     <Text style={[styles.itemMarks, (r?.marks || 0) < 0 && { color: '#E63946' }]}>
                                         {r?.marks ?? 0}
