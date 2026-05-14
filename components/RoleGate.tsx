@@ -4,17 +4,18 @@ import { AppRole, getRouteForRole, getSession } from '../lib/authRouting';
 import Spinner from './Spinner';
 
 type Props = {
-    role: AppRole;
+    role: AppRole | AppRole[];
     children: ReactNode;
 };
 
 /**
- * Guards a route group so only sessions with the given role can render its children.
- * Redirects to /login if no session, or to the other role's home if the role mismatches.
+ * Guards a route group so only sessions with one of the given roles can render its children.
+ * Redirects to /login if no session, or to the session's home if the role mismatches.
  */
 export default function RoleGate({ role, children }: Props) {
     const router = useRouter();
     const [allowed, setAllowed] = useState(false);
+    const allowedRoles = Array.isArray(role) ? role : [role];
 
     useEffect(() => {
         let active = true;
@@ -24,14 +25,15 @@ export default function RoleGate({ role, children }: Props) {
                 router.replace('/login');
                 return;
             }
-            if (session.role !== role) {
+            if (!allowedRoles.includes(session.role)) {
                 router.replace(getRouteForRole(session.role) as never);
                 return;
             }
             setAllowed(true);
         });
         return () => { active = false; };
-    }, [router, role]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router, allowedRoles.join(',')]);
 
     if (!allowed) return <Spinner />;
     return <>{children}</>;

@@ -5,7 +5,7 @@ import { colors } from '../../lib/theme';
 
 export default function DivisionalLayout() {
   return (
-    <RoleGate role="divisional">
+    <RoleGate role={['divisional', 'admin']}>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.primaryDark },

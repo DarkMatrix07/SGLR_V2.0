@@ -6,6 +6,7 @@ import { InspectionWithReviewer, Resort } from '../../../lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { getSession } from '../../../lib/authRouting';
+import { logAudit } from '../../../lib/audit';
 import { generatePostInspectionPDF } from '../../../utils/generatePDF';
 import {
     CATEGORIES,
@@ -84,6 +85,13 @@ export default function InspectionDetail() {
                             setActing(false);
                         } else {
                             Vibration.vibrate(40);
+                            const auditAction = action === 'approve' ? 'approve_inspection'
+                                : action === 'reject' ? 'reject_inspection'
+                                : 'unfreeze_inspection';
+                            await logAudit(auditAction, 'inspection', id as string, {
+                                resort: resort?.name,
+                                comments: comments || null,
+                            });
                             router.back();
                         }
                     },

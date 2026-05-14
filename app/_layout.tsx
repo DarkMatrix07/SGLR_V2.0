@@ -7,6 +7,7 @@ export default function RootLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="(divisional)" />
       <Stack.Screen name="(district)" />
+      <Stack.Screen name="(admin)" />
     </Stack>
   );
 }

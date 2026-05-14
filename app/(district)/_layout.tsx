@@ -5,7 +5,7 @@ import { colors } from '../../lib/theme';
 
 export default function DistrictLayout() {
     return (
-        <RoleGate role="district">
+        <RoleGate role={['district', 'admin']}>
             <Stack
                 screenOptions={{
                     headerStyle: { backgroundColor: colors.primaryDark },

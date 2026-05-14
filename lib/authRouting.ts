@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-export type AppRole = 'divisional' | 'district';
+export type AppRole = 'divisional' | 'district' | 'admin';
 
 export type AppSession = {
     officerId: string;
@@ -38,7 +38,7 @@ export async function signIn(rawPhone: string, pin: string): Promise<AppSession>
     if (error) throw new Error(error.message);
     if (!data) throw new Error('This phone number is not approved for app access.');
     if (data.pin !== pin) throw new Error('Incorrect PIN.');
-    if (data.role !== 'divisional' && data.role !== 'district') {
+    if (!['divisional', 'district', 'admin'].includes(data.role)) {
         throw new Error('Your account has no role assigned.');
     }
 
@@ -68,6 +68,8 @@ export async function signOut(): Promise<void> {
     await AsyncStorage.removeItem(SESSION_KEY);
 }
 
-export function getRouteForRole(role: AppRole) {
-    return role === 'district' ? '/(district)' : '/(divisional)';
+export function getRouteForRole(role: AppRole): string {
+    if (role === 'admin') return '/(admin)';
+    if (role === 'district') return '/(district)';
+    return '/(divisional)';
 }
