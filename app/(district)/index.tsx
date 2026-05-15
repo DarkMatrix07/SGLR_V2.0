@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { AppSession, getSession } from '../../lib/authRouting';
 import Spinner from '../../components/Spinner';
-import { colors,  formatDate, formatStars } from '../../lib/theme';
+import { capitalize, colors, formatDate, formatStars } from '../../lib/theme';
 
 type InspectionWithResort = {
     id: string;
@@ -83,7 +83,7 @@ export default function DistrictReview() {
         <View style={styles.container}>
             {session && (
                 <Text style={styles.sessionMeta}>
-                    Logged in as {session.name ?? session.phone} • District
+                    Logged in as {session.name ?? session.phone} • {capitalize(session.role)}
                 </Text>
             )}
             <View style={styles.tabRow}>

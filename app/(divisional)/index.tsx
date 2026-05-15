@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { AppSession, getSession } from '../../lib/authRouting';
 import Spinner from '../../components/Spinner';
-import { colors, formatStars } from '../../lib/theme';
+import { capitalize, colors, formatStars } from '../../lib/theme';
 
 type Resort = {
     id: string;
@@ -90,7 +90,7 @@ export default function ResortList() {
         <View style={styles.container}>
             {session && (
                 <Text style={styles.sessionMeta}>
-                    Logged in as {session.name ?? session.phone} • Divisional
+                    Logged in as {session.name ?? session.phone} • {capitalize(session.role)}
                 </Text>
             )}
             <TextInput

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Link, useFocusEffect } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { AppSession, getSession } from '../../lib/authRouting';
 import { supabase } from '../../lib/supabase';
 import { colors } from '../../lib/theme';
@@ -23,6 +23,7 @@ const CARDS: { href: string; title: string; subtitle: string; icon: string }[] =
 ];
 
 export default function AdminHome() {
+    const router = useRouter();
     const [session, setSession] = useState<AppSession | null>(null);
     const [counts, setCounts] = useState<Counts | null>(null);
 
@@ -75,16 +76,19 @@ export default function AdminHome() {
 
             <View style={styles.cardsContainer}>
                 {CARDS.map(c => (
-                    <Link key={c.href} href={c.href as never} asChild>
-                        <View style={styles.card}>
-                            <Text style={styles.cardIcon}>{c.icon}</Text>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.cardTitle}>{c.title}</Text>
-                                <Text style={styles.cardSubtitle}>{c.subtitle}</Text>
-                            </View>
-                            <Text style={styles.cardChevron}>›</Text>
+                    <Pressable
+                        key={c.href}
+                        style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+                        android_ripple={{ color: colors.primaryLight }}
+                        onPress={() => router.push(c.href as never)}
+                    >
+                        <Text style={styles.cardIcon}>{c.icon}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>{c.title}</Text>
+                            <Text style={styles.cardSubtitle}>{c.subtitle}</Text>
                         </View>
-                    </Link>
+                        <Text style={styles.cardChevron}>›</Text>
+                    </Pressable>
                 ))}
             </View>
         </ScrollView>
@@ -108,7 +112,7 @@ const styles = StyleSheet.create({
     statValue: { fontSize: 24, fontWeight: '700', color: colors.primaryDark },
     statLabel: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
     cardsContainer: { marginTop: 12 },
-    card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+    card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
     cardIcon: { fontSize: 26, marginRight: 14 },
     cardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
     cardSubtitle: { fontSize: 12, color: colors.textMuted, marginTop: 2 },

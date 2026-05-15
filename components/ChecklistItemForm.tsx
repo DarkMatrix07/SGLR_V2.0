@@ -205,9 +205,11 @@ function OptionsEditor({ type, options, onChange }: { type: string; options: any
                     ) : (
                         <TextInput
                             style={[styles.input, { width: 90 }]}
-                            value={opt.marks != null ? String(opt.marks) : String(opt.subScoreMax ?? 0)}
+                            value={(opt.marks != null && opt.marks < 0) ? String(opt.marks) : String(opt.subScoreMax ?? 0)}
                             onChangeText={(v) => {
                                 const num = parseInt(v) || 0;
+                                // Negative → it's a penalty option (e.g. single_pit -8). Positive → it's a sub-score cap.
+                                // Either way, preserve other props on the option (notably hasDesludge).
                                 if (num < 0) updateOption(idx, { marks: num, subScoreMax: undefined });
                                 else updateOption(idx, { subScoreMax: num, marks: undefined });
                             }}
