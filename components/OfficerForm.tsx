@@ -47,8 +47,12 @@ export default function OfficerForm({ initial }: Props) {
             : await supabase.from('officers').insert(payload).select().single();
 
         if (error) {
-            console.error('Officer save failed:', error.message);
-            const msg = error.code === '23505' ? 'An officer with this phone already exists.' : 'Could not save officer.';
+            console.error('Officer save failed:', error);
+            const msg = error.code === '23505'
+                ? 'An officer with this phone already exists.'
+                : error.code === '42501'
+                    ? 'Permission denied. RLS policy is blocking this write.'
+                    : (error.message || 'Could not save officer.');
             Alert.alert('Save Failed', msg);
             setSaving(false);
             return;

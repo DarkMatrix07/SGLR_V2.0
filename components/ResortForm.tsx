@@ -44,7 +44,12 @@ export default function ResortForm({ initial }: Props) {
             : await supabase.from('resorts').insert(payload).select().single();
 
         if (error) {
-            const msg = error.code === '23505' ? 'A resort with this serial number already exists.' : 'Could not save resort.';
+            console.error('Resort save failed:', error);
+            const msg = error.code === '23505'
+                ? 'A resort with this serial number already exists.'
+                : error.code === '42501'
+                    ? 'Permission denied. RLS policy is blocking this write.'
+                    : (error.message || 'Could not save resort.');
             Alert.alert('Save Failed', msg);
             setSaving(false);
             return;

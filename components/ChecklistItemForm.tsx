@@ -57,7 +57,12 @@ export default function ChecklistItemForm({ initial }: Props) {
             : await supabase.from('checklist_items').insert(payload).select().single();
 
         if (error) {
-            const msg = error.code === '23505' ? 'A checklist item with this ID already exists.' : error.message;
+            console.error('Checklist save failed:', error);
+            const msg = error.code === '23505'
+                ? 'A checklist item with this ID already exists.'
+                : error.code === '42501'
+                    ? 'Permission denied. RLS policy is blocking this write.'
+                    : (error.message || 'Could not save item.');
             Alert.alert('Save Failed', msg);
             setSaving(false);
             return;
