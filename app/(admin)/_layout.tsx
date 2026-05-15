@@ -21,6 +21,7 @@ export default function AdminLayout() {
                 <Stack.Screen name="resorts/index" options={{ title: 'Resorts' }} />
                 <Stack.Screen name="resorts/[id]" options={{ title: 'Edit Resort' }} />
                 <Stack.Screen name="resorts/new" options={{ title: 'New Resort' }} />
+                <Stack.Screen name="resorts/import" options={{ title: 'Bulk Import Resorts' }} />
                 <Stack.Screen name="checklist/index" options={{ title: 'Checklist' }} />
                 <Stack.Screen name="checklist/[id]" options={{ title: 'Edit Item' }} />
                 <Stack.Screen name="checklist/new" options={{ title: 'New Item' }} />

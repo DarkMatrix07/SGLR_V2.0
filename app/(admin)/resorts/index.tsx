@@ -41,6 +41,11 @@ export default function ResortsList() {
                     onChangeText={setSearch}
                     placeholderTextColor={colors.textMuted}
                 />
+                <Link href="/(admin)/resorts/import" asChild>
+                    <Pressable style={[styles.addBtn, styles.secondaryBtn]}>
+                        <Text style={styles.secondaryBtnText}>Import</Text>
+                    </Pressable>
+                </Link>
                 <Link href="/(admin)/resorts/new" asChild>
                     <Pressable style={styles.addBtn}>
                         <Text style={styles.addBtnText}>+ New</Text>
@@ -79,8 +84,10 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
     headerRow: { flexDirection: 'row', padding: 12, gap: 8, alignItems: 'center' },
     search: { flex: 1, padding: 12, backgroundColor: colors.surface, borderRadius: 12, fontSize: 15, borderWidth: 1, borderColor: colors.border },
-    addBtn: { backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 },
+    addBtn: { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12 },
     addBtnText: { color: '#fff', fontWeight: '700' },
+    secondaryBtn: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
+    secondaryBtnText: { color: colors.primary, fontWeight: '700' },
     empty: { textAlign: 'center', color: colors.textMuted, fontSize: 14, padding: 24 },
     card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
     numberCircle: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
