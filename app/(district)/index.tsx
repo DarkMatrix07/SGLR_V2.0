@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, Pressable, TouchableOpacity, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -38,6 +38,17 @@ export default function DistrictReview() {
 
     useFocusEffect(useCallback(() => { fetchData(); }, []));
     useFocusEffect(useCallback(() => { getSession().then(setSession); }, []));
+
+    // Live updates: new submissions and status changes appear without pulling to refresh
+    useEffect(() => {
+        const channel = supabase
+            .channel('district-list')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, () => {
+                fetchData();
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, []);
 
     async function fetchData() {
         const { data } = await supabase

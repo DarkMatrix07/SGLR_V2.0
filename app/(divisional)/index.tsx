@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -36,6 +36,17 @@ export default function ResortList() {
     useFocusEffect(useCallback(() => { getSession().then(setSession); }, []));
 
     useFocusEffect(useCallback(() => { fetchData(); }, []));
+
+    // Live updates: refetch whenever any inspection changes (so approve/reject by district shows up immediately)
+    useEffect(() => {
+        const channel = supabase
+            .channel('divisional-list')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, () => {
+                fetchData();
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, []);
 
     async function fetchData() {
         const [resortRes, inspRes] = await Promise.all([
