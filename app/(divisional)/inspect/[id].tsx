@@ -191,9 +191,10 @@ export default function InspectionForm() {
                                 onPress={() => {
                                     setResponses(prev => {
                                         const n = { ...prev };
-                                        // Any change to the parent invalidates conditional children
-                                        delete n['3_sub'];
-                                        delete n['3_desludge'];
+                                        // Clear conditional children whose parent is this item — driven by visibility_condition
+                                        items
+                                            .filter(child => child.visibility_condition?.dependsOn === item.id)
+                                            .forEach(child => { delete n[child.id]; });
                                         if (key === 'single_pit') {
                                             n[item.id] = { selected: key, marks: -8 };
                                         } else {
