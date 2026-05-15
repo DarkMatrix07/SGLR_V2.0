@@ -1,3 +1,5 @@
+import { getThresholdsSync } from './settings';
+
 export type ChecklistItem = {
     id: string;
     category: string;
@@ -58,10 +60,11 @@ export function isVisible(item: ChecklistItem, responses: Responses): boolean {
 }
 
 export function getStars(score: number): number {
-    if (score >= 170) return 5;
-    if (score >= 130) return 4;
-    if (score >= 90) return 3;
-    if (score >= 50) return 2;
+    const t = getThresholdsSync();
+    if (score >= t.five_star) return 5;
+    if (score >= t.four_star) return 4;
+    if (score >= t.three_star) return 3;
+    if (score >= t.two_star) return 2;
     return 1;
 }
 

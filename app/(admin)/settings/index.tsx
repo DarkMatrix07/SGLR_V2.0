@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useFocusEffect } from 'expo-router';
 import Spinner from '../../../components/Spinner';
 import { logAudit } from '../../../lib/audit';
+import { loadThresholds } from '../../../lib/settings';
 import { supabase } from '../../../lib/supabase';
 import { colors } from '../../../lib/theme';
 
@@ -35,8 +36,9 @@ export default function AdminSettings() {
             return;
         }
         await logAudit('update_settings', 'settings', 'rating_thresholds', thresholds);
+        await loadThresholds();
         setSaving(false);
-        Alert.alert('Saved', 'Threshold settings updated.');
+        Alert.alert('Saved', 'Threshold settings updated. New submissions will use these values.');
     }
 
     if (loading) return <Spinner />;
@@ -60,9 +62,8 @@ export default function AdminSettings() {
             </Pressable>
 
             <Text style={styles.hint}>
-                Note: thresholds are stored in app_settings but the divisional/district/PDF screens still use compiled-in defaults
-                (170 / 130 / 90 / 50). To take effect end-to-end, regenerate the app with these values or wire the screens to
-                read from app_settings on mount.
+                Thresholds are loaded into memory on app start and refreshed after every save. New inspection submissions
+                will use these values. Existing inspections keep the star rating that was assigned at submission time.
             </Text>
         </ScrollView>
     );
